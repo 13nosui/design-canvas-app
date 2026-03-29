@@ -1,11 +1,15 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
 import '../../core/design_system/app_colors.dart';
 import '../../core/design_system/device_specs.dart';
 import '../../core/design_system/theme_controller.dart';
 import '../../core/navigation/sitemap_definition.dart';
 import '../../core/navigation/sitemap_widgets.g.dart';
+import '../../core/utils/file_exporter_stub.dart' if (dart.library.io) '../../core/utils/file_exporter_io.dart';
 
 enum PreviewMode {
   free,
@@ -122,6 +126,128 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
     ));
 
     _animationController.forward(from: 0.0);
+  }
+
+  String _generateAppColorsCode(Color primary) {
+    return '''import 'package:flutter/material.dart';
+
+class AppColors extends ThemeExtension<AppColors> {
+  final Color primary;
+
+  const AppColors({
+    required this.primary,
+  });
+
+  @override
+  AppColors copyWith({Color? primary}) {
+    return AppColors(
+      primary: primary ?? this.primary,
+    );
+  }
+
+  @override
+  AppColors lerp(ThemeExtension<AppColors>? other, double t) {
+    if (other is! AppColors) {
+      return this;
+    }
+    return AppColors(
+      primary: Color.lerp(primary, other.primary, t) ?? primary,
+    );
+  }
+
+  // ライブエディタからのエクスポート値
+  static const defaultColors = AppColors(
+    primary: Color(0x${primary.value.toRadixString(16).padLeft(8, '0')}),
+  );
+}
+
+extension AppColorsExtension on BuildContext {
+  AppColors get appColors => Theme.of(this).extension<AppColors>() ?? AppColors.defaultColors;
+}
+''';
+  }
+
+  String _generateAppSpacingCode(double base) {
+    final s = base.toStringAsFixed(1);
+    final m = (base * 2).toStringAsFixed(1);
+    final l = (base * 3).toStringAsFixed(1);
+    
+    return '''import 'package:flutter/material.dart';
+
+class AppSpacing extends ThemeExtension<AppSpacing> {
+  final double s;
+  final double m;
+  final double l;
+
+  const AppSpacing({
+    required this.s,
+    required this.m,
+    required this.l,
+  });
+
+  @override
+  AppSpacing copyWith({
+    double? s,
+    double? m,
+    double? l,
+  }) {
+    return AppSpacing(
+      s: s ?? this.s,
+      m: m ?? this.m,
+      l: l ?? this.l,
+    );
+  }
+
+  @override
+  AppSpacing lerp(ThemeExtension<AppSpacing>? other, double t) {
+    if (other is! AppSpacing) {
+      return this;
+    }
+    return AppSpacing(
+      s: s + (other.s - s) * t,
+      m: m + (other.m - m) * t,
+      l: l + (other.l - l) * t,
+    );
+  }
+
+  // ライブエディタからのエクスポート値
+  static const defaultSpacing = AppSpacing(
+    s: $s,
+    m: $m,
+    l: $l,
+  );
+}
+
+extension AppSpacingExtension on BuildContext {
+  AppSpacing get appSpacing => Theme.of(this).extension<AppSpacing>() ?? AppSpacing.defaultSpacing;
+}
+''';
+  }
+
+  void _exportAndSaveCode(BuildContext context, ThemeControllerProvider themeController) {
+    final colorsCode = _generateAppColorsCode(themeController.primaryColor);
+    final spacingCode = _generateAppSpacingCode(themeController.spacingBase);
+
+    if (kIsWeb) {
+      // Webブラウザの場合はローカルファイルへの書き込み権限がないため、クリップボードへ保存
+      final fullCode = '/* lib/core/design_system/app_colors.dart */\\n\\n\$colorsCode\\n\\n/* lib/core/design_system/app_spacing.dart */\\n\\n\$spacingCode';
+      Clipboard.setData(ClipboardData(text: fullCode));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('✨ Code copied to clipboard (Web Mode)')),
+      );
+    } else {
+      // macOSなどのネイティブ環境ではプロジェクトファイルを直接上書きする
+      try {
+        saveFilesToDisk(colorsCode: colorsCode, spacingCode: spacingCode);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('🔥 Source files updated directly! (Native Mode)')),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving files: \$e')),
+        );
+      }
+    }
   }
 
   Widget _buildDevicePreview(DeviceSpec device, Widget content) {
@@ -241,6 +367,23 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
                 // スライダーを動かした瞬間にThemeControllerに通知が行き、即座にリビルド連鎖が起きる
                 themeController.updateTheme(spacing: val);
               },
+            ),
+            const SizedBox(height: 32),
+            const Divider(),
+            Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.save_alt),
+                label: const Text('Export Code (Save)'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: themeController.primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                onPressed: () {
+                  _exportAndSaveCode(context, themeController);
+                },
+              ),
             ),
           ],
         ),
