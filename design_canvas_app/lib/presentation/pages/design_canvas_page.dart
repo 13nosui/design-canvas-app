@@ -1,8 +1,17 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import '../../core/design_system/app_colors.dart';
 import '../../core/design_system/device_specs.dart';
 import '../../core/navigation/sitemap_definition.dart';
 import '../../core/navigation/sitemap_widgets.g.dart';
+
+enum PreviewMode {
+  free,
+  iphone15,
+  pixel7,
+  allDevices,
+}
 
 class DesignCanvasPage extends StatefulWidget {
   const DesignCanvasPage({super.key});
@@ -12,13 +21,39 @@ class DesignCanvasPage extends StatefulWidget {
 }
 
 class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerProviderStateMixin {
-  DeviceSpec _selectedDevice = AppDevices.free;
+  PreviewMode _previewMode = PreviewMode.free;
 
-  // デバイスの定義からサイズを取得
-  double get screenWidth => _selectedDevice.width;
-  double get screenHeight => _selectedDevice.height;
+  // デバイス間の間隔（Allモード時の横並びの余白）
+  final double deviceSpacing = 64.0;
 
-  // 画面間の横の間隔
+  DeviceSpec? get _singleDevice {
+    switch (_previewMode) {
+      case PreviewMode.free: return AppDevices.free;
+      case PreviewMode.iphone15: return AppDevices.iphone15;
+      case PreviewMode.pixel7: return AppDevices.pixel7;
+      case PreviewMode.allDevices: return null;
+    }
+  }
+
+  // 1つのノード（画面群）の全体の幅を計算
+  double get screenWidth {
+    if (_previewMode == PreviewMode.allDevices) {
+      final totalWidth = AppDevices.values.fold<double>(0, (sum, device) => sum + device.width);
+      final spacingWidth = deviceSpacing * (AppDevices.values.length - 1);
+      return totalWidth + spacingWidth;
+    }
+    return _singleDevice!.width;
+  }
+
+  // 1つのノード（画面群）の全体の高さを計算
+  double get screenHeight {
+    if (_previewMode == PreviewMode.allDevices) {
+      return AppDevices.values.map((d) => d.height).reduce((a, b) => max(a, b));
+    }
+    return _singleDevice!.height;
+  }
+
+  // サイトマップ描画時の、ノード間の余白（xSpacing）
   final double xSpacing = 200;
 
   late TransformationController _transformationController;
@@ -31,7 +66,7 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
     _transformationController = TransformationController();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 500),
     )..addListener(() {
         if (_animation != null) {
           _transformationController.value = _animation!.value;
@@ -46,14 +81,13 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
     super.dispose();
   }
 
-  // 各画面の座標を計算
+  // 各画面グループの左上座標を計算
   Map<String, Offset> _calculatePositions() {
     final positions = <String, Offset>{};
     double currentX = 100.0;
     
-    // シンプルに左から右へ並べるロジック
+    // シンプルに左から右へノードを並べるロジック
     for (final key in sitemapDefinition.keys) {
-      // 少し下に余白を取る
       positions[key] = Offset(currentX, 200.0);
       currentX += screenWidth + xSpacing;
     }
@@ -63,7 +97,13 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
   // 該当の座標へアニメーションしてズーム移動する
   void _zoomToScreen(Offset targetPosition) {
     final screenSize = MediaQuery.of(context).size;
-    const targetScale = 1.0;
+    
+    // Allモードの場合は横幅が大きいので、少し引きで（縮小して）表示する
+    double targetScale = 1.0;
+    if (_previewMode == PreviewMode.allDevices) {
+      // 少し縮小しておく（最大でも画面幅にフィットするように概算）
+      targetScale = min(1.0, screenSize.width / (screenWidth + 100));
+    }
 
     final screenCenterX = targetPosition.dx + (screenWidth / 2);
     final screenCenterY = targetPosition.dy + (screenHeight / 2);
@@ -92,29 +132,60 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
     _animationController.forward(from: 0.0);
   }
 
+  // 個別のデバイスプレビューコンテナ（ベゼルと画面の中身）を描画
+  Widget _buildDevicePreview(DeviceSpec device, Widget content) {
+    return Container(
+      width: device.width,
+      height: device.height,
+      decoration: BoxDecoration(
+        color: Colors.black, // ベゼルの色
+        borderRadius: BorderRadius.circular(device.borderRadius),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 30,
+            offset: Offset(0, 15),
+          )
+        ],
+      ),
+      padding: EdgeInsets.all(device.bezelWidth),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(
+          (device.borderRadius - device.bezelWidth).clamp(0.0, double.infinity),
+        ),
+        child: Container(
+          color: Colors.white,
+          child: AbsorbPointer(
+            child: content,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final positions = _calculatePositions();
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sitemap Canvas'),
+        title: const Text('Design Canvas (Sitemap)'),
         elevation: 1,
         actions: [
           // デバイス切り替えツールバー
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            child: SegmentedButton<DeviceSpec>(
-              segments: AppDevices.values.map((device) {
-                return ButtonSegment<DeviceSpec>(
-                  value: device,
-                  label: Text(device.name, style: const TextStyle(fontSize: 12)),
-                );
-              }).toList(),
-              selected: {_selectedDevice},
-              onSelectionChanged: (Set<DeviceSpec> newSelection) {
+            child: SegmentedButton<PreviewMode>(
+              segments: const [
+                ButtonSegment(value: PreviewMode.free, label: Text('Free', style: TextStyle(fontSize: 12))),
+                ButtonSegment(value: PreviewMode.iphone15, label: Text('iPhone 15', style: TextStyle(fontSize: 12))),
+                ButtonSegment(value: PreviewMode.pixel7, label: Text('Pixel 7', style: TextStyle(fontSize: 12))),
+                ButtonSegment(value: PreviewMode.allDevices, label: Text('All Devices', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
+              ],
+              selected: {_previewMode},
+              onSelectionChanged: (Set<PreviewMode> newSelection) {
                 setState(() {
-                  _selectedDevice = newSelection.first;
+                  _previewMode = newSelection.first;
                 });
               },
             ),
@@ -128,15 +199,17 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
         maxScale: 3.0,
         constrained: false,
         child: SizedBox(
-          width: 5000,
+          width: 8000,
           height: 3000,
           child: Stack(
             children: [
+              // 背景
               Positioned.fill(
                 child: Container(
                   color: Colors.grey[100],
                 ),
               ),
+              // 第一層：線を描画
               Positioned.fill(
                 child: CustomPaint(
                   painter: SitemapPainter(
@@ -148,6 +221,7 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
                   ),
                 ),
               ),
+              // 第二層：画面（ノード）を配置
               for (final entry in positions.entries)
                 Positioned(
                   left: entry.value.dx,
@@ -168,33 +242,28 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
                         ),
                       );
                     },
-                    // ベゼルの描画
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black, // ベゼルの色
-                        borderRadius: BorderRadius.circular(_selectedDevice.borderRadius),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 30,
-                            offset: Offset(0, 15),
+                    // モードに応じて中身を単一か複数並列か分岐
+                    child: _previewMode == PreviewMode.allDevices
+                        ? Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.center, // 横並び時に中央揃え
+                            children: AppDevices.values.asMap().entries.map((devEntry) {
+                              final idx = devEntry.key;
+                              final dev = devEntry.value;
+                              final content = generatedScreenWidgets[entry.key] ?? const Center(child: Text('Not Found'));
+                              
+                              return Padding(
+                                padding: EdgeInsets.only(
+                                  right: idx < AppDevices.values.length - 1 ? deviceSpacing : 0,
+                                ),
+                                child: _buildDevicePreview(dev, content),
+                              );
+                            }).toList(),
                           )
-                        ],
-                      ),
-                      padding: EdgeInsets.all(_selectedDevice.bezelWidth),
-                      child: ClipRRect(
-                        // ベゼル分だけ内側の角丸を小さくする
-                        borderRadius: BorderRadius.circular(
-                          (_selectedDevice.borderRadius - _selectedDevice.bezelWidth).clamp(0.0, double.infinity),
-                        ),
-                        child: Container(
-                          color: Colors.white,
-                          child: AbsorbPointer(
-                            child: generatedScreenWidgets[entry.key] ?? const Center(child: Text('Not Found')),
+                        : _buildDevicePreview(
+                            _singleDevice!,
+                            generatedScreenWidgets[entry.key] ?? const Center(child: Text('Not Found')),
                           ),
-                        ),
-                      ),
-                    ),
                   ),
                 ),
             ],
