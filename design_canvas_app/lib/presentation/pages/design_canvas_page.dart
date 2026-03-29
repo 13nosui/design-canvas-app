@@ -344,7 +344,7 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
                             children: AppDevices.values.asMap().entries.map((devEntry) {
                               final idx = devEntry.key;
                               final dev = devEntry.value;
-                              final content = generatedScreenWidgets[entry.key] ?? const Center(child: Text('Not Found'));
+                              final content = generatedScreenBuilders[entry.key]?.call(context) ?? const Center(child: Text('Not Found'));
                               
                               return Padding(
                                 padding: EdgeInsets.only(
@@ -356,7 +356,7 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
                           )
                         : _buildDevicePreview(
                             _singleDevice!,
-                            generatedScreenWidgets[entry.key] ?? const Center(child: Text('Not Found')),
+                            generatedScreenBuilders[entry.key]?.call(context) ?? const Center(child: Text('Not Found')),
                           ),
                   ),
                 ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/my_custom_button.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -11,10 +12,20 @@ class HomePage extends StatelessWidget {
         title: const Text('Home'),
         elevation: 1,
       ),
-      body: const Center(
-        child: Text(
-          'Home',
-          style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              'Home',
+              style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 24),
+            MyCustomButton(
+              text: 'Check Color Updates!',
+              onPressed: () {},
+            ),
+          ],
         ),
       ),
     );
