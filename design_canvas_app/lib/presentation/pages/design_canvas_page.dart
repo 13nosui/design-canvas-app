@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/design_system/app_colors.dart';
+import '../../core/design_system/device_specs.dart';
 import '../../core/navigation/sitemap_definition.dart';
 import '../../core/navigation/sitemap_widgets.g.dart';
 
@@ -11,11 +12,14 @@ class DesignCanvasPage extends StatefulWidget {
 }
 
 class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerProviderStateMixin {
-  // 画面のサイズ設定（iPhone等に近い比率で縮小表示）
-  final double screenWidth = 250;
-  final double screenHeight = 500;
+  DeviceSpec _selectedDevice = AppDevices.free;
+
+  // デバイスの定義からサイズを取得
+  double get screenWidth => _selectedDevice.width;
+  double get screenHeight => _selectedDevice.height;
+
   // 画面間の横の間隔
-  final double xSpacing = 150;
+  final double xSpacing = 200;
 
   late TransformationController _transformationController;
   late AnimationController _animationController;
@@ -49,6 +53,7 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
     
     // シンプルに左から右へ並べるロジック
     for (final key in sitemapDefinition.keys) {
+      // 少し下に余白を取る
       positions[key] = Offset(currentX, 200.0);
       currentX += screenWidth + xSpacing;
     }
@@ -57,25 +62,18 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
 
   // 該当の座標へアニメーションしてズーム移動する
   void _zoomToScreen(Offset targetPosition) {
-    // Scaffoldのボディサイズ（Viewport全体）と扱う
     final screenSize = MediaQuery.of(context).size;
-    
-    // 原寸大（1.0倍）へズーム
     const targetScale = 1.0;
 
-    // Target画面の中心座標（キャンバス上）
     final screenCenterX = targetPosition.dx + (screenWidth / 2);
     final screenCenterY = targetPosition.dy + (screenHeight / 2);
 
-    // Viewportとしての中心座標（表示領域）
-    // SafeAreaやAppBarの影響である程度ズレるため概算（Scaffoldのbody幅を利用）
     final viewportWidth = screenSize.width;
     final viewportHeight = screenSize.height - kToolbarHeight - MediaQuery.of(context).padding.top;
 
     final viewportCenterX = viewportWidth / 2;
     final viewportCenterY = viewportHeight / 2;
 
-    // 行列の平行移動成分を計算（スケール適用後の位置に合わせるため targetScale をかける）
     final targetX = viewportCenterX - (screenCenterX * targetScale);
     final targetY = viewportCenterY - (screenCenterY * targetScale);
 
@@ -88,7 +86,7 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
       end: targetMatrix,
     ).animate(CurvedAnimation(
       parent: _animationController,
-      curve: Curves.easeInOutBack, // リズミカルなアニメーション
+      curve: Curves.easeInOutBack,
     ));
 
     _animationController.forward(from: 0.0);
@@ -101,26 +99,44 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
     return Scaffold(
       appBar: AppBar(
         title: const Text('Sitemap Canvas'),
-        elevation: 0,
+        elevation: 1,
+        actions: [
+          // デバイス切り替えツールバー
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: SegmentedButton<DeviceSpec>(
+              segments: AppDevices.values.map((device) {
+                return ButtonSegment<DeviceSpec>(
+                  value: device,
+                  label: Text(device.name, style: const TextStyle(fontSize: 12)),
+                );
+              }).toList(),
+              selected: {_selectedDevice},
+              onSelectionChanged: (Set<DeviceSpec> newSelection) {
+                setState(() {
+                  _selectedDevice = newSelection.first;
+                });
+              },
+            ),
+          ),
+        ],
       ),
       body: InteractiveViewer(
         transformationController: _transformationController,
         boundaryMargin: const EdgeInsets.all(double.infinity),
-        minScale: 0.1,
-        maxScale: 2.0,
+        minScale: 0.05,
+        maxScale: 3.0,
         constrained: false,
         child: SizedBox(
-          width: 3000,
+          width: 5000,
           height: 3000,
           child: Stack(
             children: [
-              // 背景となるキャンバスのベース
               Positioned.fill(
                 child: Container(
                   color: Colors.grey[100],
                 ),
               ),
-              // 第一層：画面同士を結ぶ線を描画
               Positioned.fill(
                 child: CustomPaint(
                   painter: SitemapPainter(
@@ -132,51 +148,51 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
                   ),
                 ),
               ),
-              // 第二層：各画面のWidgetを配置
               for (final entry in positions.entries)
                 Positioned(
                   left: entry.value.dx,
                   top: entry.value.dy,
                   width: screenWidth,
                   height: screenHeight,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: Colors.black12, width: 1),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 20,
-                          offset: Offset(0, 10),
-                        )
-                      ],
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: GestureDetector(
-                      // タップを確実に拾うための指定
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () {
-                        // 画面中心にズーム移動
-                        _zoomToScreen(entry.value);
-                      },
-                      onDoubleTap: () {
-                        // Click-to-Code のプレビュー雛形
-                        // ファイルパスの算出（仮）例：home -> lib/presentation/pages/home_page.dart
-                        final snakeCaseKey = entry.key.toLowerCase();
-                        final filePath = 'lib/presentation/pages/${snakeCaseKey}_page.dart';
-                        
-                        debugPrint('ANTIGRAVITY_OPEN_FILE: $filePath');
-                        
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('🖥️ Click-to-Code ($filePath)\n（コンソールを確認してください）'),
-                            duration: const Duration(seconds: 4),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => _zoomToScreen(entry.value),
+                    onDoubleTap: () {
+                      final snakeCaseKey = entry.key.toLowerCase();
+                      final filePath = 'lib/presentation/pages/${snakeCaseKey}_page.dart';
+                      debugPrint('ANTIGRAVITY_OPEN_FILE: $filePath');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('🖥️ Click-to-Code ($filePath)'),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    // ベゼルの描画
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black, // ベゼルの色
+                        borderRadius: BorderRadius.circular(_selectedDevice.borderRadius),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 30,
+                            offset: Offset(0, 15),
+                          )
+                        ],
+                      ),
+                      padding: EdgeInsets.all(_selectedDevice.bezelWidth),
+                      child: ClipRRect(
+                        // ベゼル分だけ内側の角丸を小さくする
+                        borderRadius: BorderRadius.circular(
+                          (_selectedDevice.borderRadius - _selectedDevice.bezelWidth).clamp(0.0, double.infinity),
+                        ),
+                        child: Container(
+                          color: Colors.white,
+                          child: AbsorbPointer(
+                            child: generatedScreenWidgets[entry.key] ?? const Center(child: Text('Not Found')),
                           ),
-                        );
-                      },
-                      // 画面内の中身のボタン等が押されないようにジェスチャーを吸収する
-                      child: AbsorbPointer(
-                        child: generatedScreenWidgets[entry.key] ?? const Center(child: Text('Not Found')),
+                        ),
                       ),
                     ),
                   ),
@@ -189,7 +205,6 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
   }
 }
 
-// 画面間を線で結ぶカスタムペインター
 class SitemapPainter extends CustomPainter {
   final Map<String, List<String>> sitemap;
   final Map<String, Offset> positions;
@@ -220,17 +235,14 @@ class SitemapPainter extends CustomPainter {
       final fromPos = positions[fromNode];
       if (fromPos == null) continue;
 
-      // 画面の右端中央を出発点とする
       final startPoint = Offset(fromPos.dx + screenWidth, fromPos.dy + screenHeight / 2);
 
       for (final toNode in sitemap[fromNode]!) {
         final toPos = positions[toNode];
         if (toPos == null) continue;
 
-        // 次の画面の左端中央を到着点とする
         final endPoint = Offset(toPos.dx, toPos.dy + screenHeight / 2);
 
-        // ベジェ曲線を使って柔らかい線を引く
         final path = Path()
           ..moveTo(startPoint.dx, startPoint.dy)
           ..cubicTo(
@@ -240,8 +252,6 @@ class SitemapPainter extends CustomPainter {
           );
 
         canvas.drawPath(path, paint);
-        
-        // 到着点に矢印風の円を描画
         canvas.drawCircle(endPoint, 6.0, arrowPaint);
       }
     }
@@ -249,6 +259,9 @@ class SitemapPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant SitemapPainter oldDelegate) {
-    return false; // 今回は静的データのため再描画不要
+    return oldDelegate.screenWidth != screenWidth ||
+           oldDelegate.screenHeight != screenHeight ||
+           oldDelegate.sitemap != sitemap ||
+           oldDelegate.positions != positions;
   }
 }
