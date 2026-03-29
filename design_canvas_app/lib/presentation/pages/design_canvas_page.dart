@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../core/design_system/app_colors.dart';
 import '../../core/design_system/device_specs.dart';
+import '../../core/design_system/theme_controller.dart';
 import '../../core/navigation/sitemap_definition.dart';
 import '../../core/navigation/sitemap_widgets.g.dart';
 
@@ -23,7 +24,6 @@ class DesignCanvasPage extends StatefulWidget {
 class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerProviderStateMixin {
   PreviewMode _previewMode = PreviewMode.free;
 
-  // デバイス間の間隔（Allモード時の横並びの余白）
   final double deviceSpacing = 64.0;
 
   DeviceSpec? get _singleDevice {
@@ -35,7 +35,6 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
     }
   }
 
-  // 1つのノード（画面群）の全体の幅を計算
   double get screenWidth {
     if (_previewMode == PreviewMode.allDevices) {
       final totalWidth = AppDevices.values.fold<double>(0, (sum, device) => sum + device.width);
@@ -45,7 +44,6 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
     return _singleDevice!.width;
   }
 
-  // 1つのノード（画面群）の全体の高さを計算
   double get screenHeight {
     if (_previewMode == PreviewMode.allDevices) {
       return AppDevices.values.map((d) => d.height).reduce((a, b) => max(a, b));
@@ -53,7 +51,6 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
     return _singleDevice!.height;
   }
 
-  // サイトマップ描画時の、ノード間の余白（xSpacing）
   final double xSpacing = 200;
 
   late TransformationController _transformationController;
@@ -81,12 +78,10 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
     super.dispose();
   }
 
-  // 各画面グループの左上座標を計算
   Map<String, Offset> _calculatePositions() {
     final positions = <String, Offset>{};
     double currentX = 100.0;
     
-    // シンプルに左から右へノードを並べるロジック
     for (final key in sitemapDefinition.keys) {
       positions[key] = Offset(currentX, 200.0);
       currentX += screenWidth + xSpacing;
@@ -94,14 +89,11 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
     return positions;
   }
 
-  // 該当の座標へアニメーションしてズーム移動する
   void _zoomToScreen(Offset targetPosition) {
     final screenSize = MediaQuery.of(context).size;
     
-    // Allモードの場合は横幅が大きいので、少し引きで（縮小して）表示する
     double targetScale = 1.0;
     if (_previewMode == PreviewMode.allDevices) {
-      // 少し縮小しておく（最大でも画面幅にフィットするように概算）
       targetScale = min(1.0, screenSize.width / (screenWidth + 100));
     }
 
@@ -132,13 +124,12 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
     _animationController.forward(from: 0.0);
   }
 
-  // 個別のデバイスプレビューコンテナ（ベゼルと画面の中身）を描画
   Widget _buildDevicePreview(DeviceSpec device, Widget content) {
     return Container(
       width: device.width,
       height: device.height,
       decoration: BoxDecoration(
-        color: Colors.black, // ベゼルの色
+        color: Colors.black,
         borderRadius: BorderRadius.circular(device.borderRadius),
         boxShadow: const [
           BoxShadow(
@@ -163,16 +154,109 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
     );
   }
 
+  // 右側に引き出される「ライブ・スタイル・エディタ」の構築
+  Widget _buildLiveEditorDrawer(BuildContext context) {
+    // ThemeControllerProviderの値を監視して即時再描画
+    final themeController = ThemeControllerProvider.of(context);
+    
+    // Flutter標準の18色のプライマリーカラー一覧
+    final List<Color> paletteColors = [
+      Colors.red, Colors.pink, Colors.purple, Colors.deepPurple,
+      Colors.indigo, Colors.blue, Colors.lightBlue, Colors.cyan,
+      Colors.teal, Colors.green, Colors.lightGreen, Colors.lime,
+      Colors.yellow, Colors.amber, Colors.orange, Colors.deepOrange,
+      Colors.brown, Colors.blueGrey, Colors.grey,
+    ];
+
+    return Drawer(
+      width: 320,
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(20.0),
+              child: Text('Live Style Editor', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            ),
+            const Divider(),
+            
+            // --- Color Picker ---
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+              child: Text('Primary Color', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: paletteColors.map((color) {
+                  final isSelected = themeController.primaryColor.value == color.value;
+                  return GestureDetector(
+                    onTap: () => themeController.updateTheme(primary: color),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                        border: isSelected ? Border.all(color: Colors.black87, width: 3) : null,
+                        boxShadow: [
+                          BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 4, offset: const Offset(0, 2))
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            
+            const SizedBox(height: 32),
+            const Divider(),
+            
+            // --- Spacing Slider ---
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+              child: Text('Spacing Base Level', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              // 現在の値から割り出したSMLの一覧を表示
+              child: Text(
+                'Current Base: ${themeController.spacingBase.toStringAsFixed(1)}px\n\n'
+                '• S (Small): ${themeController.spacingBase.toStringAsFixed(1)}px\n'
+                '• M (Medium): ${(themeController.spacingBase * 2).toStringAsFixed(1)}px\n'
+                '• L (Large): ${(themeController.spacingBase * 3).toStringAsFixed(1)}px',
+                style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.4),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Slider(
+              value: themeController.spacingBase,
+              min: 4.0,
+              max: 24.0,
+              divisions: 20,
+              label: '${themeController.spacingBase.toStringAsFixed(1)} px',
+              onChanged: (val) {
+                // スライダーを動かした瞬間にThemeControllerに通知が行き、即座にリビルド連鎖が起きる
+                themeController.updateTheme(spacing: val);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final positions = _calculatePositions();
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Design Canvas (Sitemap)'),
+        title: const Text('Design Canvas'),
         elevation: 1,
         actions: [
-          // デバイス切り替えツールバー
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: SegmentedButton<PreviewMode>(
@@ -190,8 +274,22 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
               },
             ),
           ),
+          // スライダパネル等を開くボタン
+          Builder(
+            builder: (context) {
+              return IconButton(
+                icon: const Icon(Icons.palette_outlined),
+                tooltip: 'Live Style Editor',
+                onPressed: () {
+                  Scaffold.of(context).openEndDrawer();
+                },
+              );
+            }
+          ),
+          const SizedBox(width: 8),
         ],
       ),
+      endDrawer: _buildLiveEditorDrawer(context), // 右側のサイドパネル
       body: InteractiveViewer(
         transformationController: _transformationController,
         boundaryMargin: const EdgeInsets.all(double.infinity),
@@ -203,13 +301,11 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
           height: 3000,
           child: Stack(
             children: [
-              // 背景
               Positioned.fill(
                 child: Container(
                   color: Colors.grey[100],
                 ),
               ),
-              // 第一層：線を描画
               Positioned.fill(
                 child: CustomPaint(
                   painter: SitemapPainter(
@@ -221,7 +317,6 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
                   ),
                 ),
               ),
-              // 第二層：画面（ノード）を配置
               for (final entry in positions.entries)
                 Positioned(
                   left: entry.value.dx,
@@ -242,11 +337,10 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
                         ),
                       );
                     },
-                    // モードに応じて中身を単一か複数並列か分岐
                     child: _previewMode == PreviewMode.allDevices
                         ? Row(
                             mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.center, // 横並び時に中央揃え
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: AppDevices.values.asMap().entries.map((devEntry) {
                               final idx = devEntry.key;
                               final dev = devEntry.value;
@@ -331,6 +425,7 @@ class SitemapPainter extends CustomPainter {
     return oldDelegate.screenWidth != screenWidth ||
            oldDelegate.screenHeight != screenHeight ||
            oldDelegate.sitemap != sitemap ||
-           oldDelegate.positions != positions;
+           oldDelegate.positions != positions ||
+           oldDelegate.lineColor != lineColor;
   }
 }
