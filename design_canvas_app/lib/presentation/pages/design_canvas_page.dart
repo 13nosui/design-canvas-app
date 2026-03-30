@@ -823,6 +823,22 @@ extension AppTypographyExtension on BuildContext {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  const Text('🚨 Visual Lint Mode', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14)),
+                  Switch(
+                    value: themeController.isLintMode,
+                    activeColor: Colors.redAccent,
+                    onChanged: (val) {
+                      themeController.updateTheme(isLintMode: val);
+                    },
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
                   const Text('Show Background Decor', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                   Switch(
                     value: _showBackgroundDecor,

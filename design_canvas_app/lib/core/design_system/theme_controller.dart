@@ -16,6 +16,7 @@ class ThemeControllerProvider extends InheritedWidget {
   final double opacity;
   final double blur;
   final bool useGradient;
+  final bool isLintMode;
   final Color gradientStartColor;
   final Color gradientEndColor;
   final void Function({
@@ -34,6 +35,7 @@ class ThemeControllerProvider extends InheritedWidget {
     double? opacity,
     double? blur,
     bool? useGradient,
+    bool? isLintMode,
     Color? gradientStartColor,
     Color? gradientEndColor,
   }) updateTheme;
@@ -55,6 +57,7 @@ class ThemeControllerProvider extends InheritedWidget {
     required this.opacity,
     required this.blur,
     required this.useGradient,
+    required this.isLintMode,
     required this.gradientStartColor,
     required this.gradientEndColor,
     required this.updateTheme,
@@ -82,6 +85,7 @@ class ThemeControllerProvider extends InheritedWidget {
            opacity != oldWidget.opacity ||
            blur != oldWidget.blur ||
            useGradient != oldWidget.useGradient ||
+           isLintMode != oldWidget.isLintMode ||
            gradientStartColor != oldWidget.gradientStartColor ||
            gradientEndColor != oldWidget.gradientEndColor;
   }
