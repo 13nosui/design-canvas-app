@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'core/design_system/app_colors.dart';
 import 'core/design_system/app_spacing.dart';
 import 'core/design_system/app_typography.dart';
+import 'core/design_system/app_shapes.dart';
 import 'core/design_system/theme_controller.dart';
 import 'presentation/pages/design_canvas_page.dart';
 
@@ -25,6 +26,7 @@ class _MyAppState extends State<MyApp> {
   double _scaleRatio = 1.25;
   int _fontWeight = 400;
   double _letterSpacing = 0.0;
+  double _borderRadius = 8.0;
 
   void _updateTheme({
     ThemeMode? mode,
@@ -35,6 +37,7 @@ class _MyAppState extends State<MyApp> {
     double? ratio,
     int? weight,
     double? letterSpace,
+    double? radius,
   }) {
     setState(() {
       if (mode != null) _themeMode = mode;
@@ -45,6 +48,7 @@ class _MyAppState extends State<MyApp> {
       if (ratio != null) _scaleRatio = ratio;
       if (weight != null) _fontWeight = weight;
       if (letterSpace != null) _letterSpacing = letterSpace;
+      if (radius != null) _borderRadius = radius;
     });
   }
 
@@ -86,6 +90,7 @@ class _MyAppState extends State<MyApp> {
           m: _spacingBase * 2,
           l: _spacingBase * 3,
         ),
+        AppShapes(borderRadius: _borderRadius),
         typo,
       ],
     );
@@ -110,6 +115,7 @@ class _MyAppState extends State<MyApp> {
       scaleRatio: _scaleRatio,
       fontWeight: _fontWeight,
       letterSpacing: _letterSpacing,
+      borderRadius: _borderRadius,
       updateTheme: _updateTheme,
       child: MaterialApp(
         title: 'Design Canvas App',

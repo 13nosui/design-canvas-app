@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/design_system/app_colors.dart';
+import '../core/design_system/app_shapes.dart';
 import '../core/design_system/app_spacing.dart';
 
 class MyCustomCard extends StatelessWidget {
@@ -18,15 +19,15 @@ class MyCustomCard extends StatelessWidget {
       width: 250,
       padding: EdgeInsets.all(context.appSpacing.m),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(context.appSpacing.m),
+        color: context.appColors.surface,
+        borderRadius: BorderRadius.circular(context.appShapes.borderRadius),
         border: Border.all(
           color: context.appColors.primary.withOpacity(0.5),
           width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Theme.of(context).shadowColor.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -47,9 +48,9 @@ class MyCustomCard extends StatelessWidget {
           SizedBox(height: context.appSpacing.s),
           Text(
             description,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
-              color: Colors.black87,
+              color: context.appColors.text.withOpacity(0.87),
             ),
           ),
         ],

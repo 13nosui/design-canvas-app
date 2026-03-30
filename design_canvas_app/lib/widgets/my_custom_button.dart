@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/design_system/app_colors.dart';
+import '../core/design_system/app_shapes.dart';
 import '../core/design_system/app_spacing.dart';
 
 class MyCustomButton extends StatelessWidget {
@@ -18,7 +19,7 @@ class MyCustomButton extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onPressed,
-        borderRadius: BorderRadius.circular(context.appSpacing.s),
+        borderRadius: BorderRadius.circular(context.appShapes.borderRadius),
         child: Container(
           padding: EdgeInsets.symmetric(
             horizontal: context.appSpacing.l,
@@ -26,7 +27,7 @@ class MyCustomButton extends StatelessWidget {
           ),
           decoration: BoxDecoration(
             color: context.appColors.primary,
-            borderRadius: BorderRadius.circular(context.appSpacing.s),
+            borderRadius: BorderRadius.circular(context.appShapes.borderRadius),
           ),
           child: Text(
             text,

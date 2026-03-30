@@ -255,6 +255,47 @@ extension AppSpacingExtension on BuildContext {
 ''';
   }
 
+  String _generateAppShapesCode(double radius) {
+    final r = radius.toStringAsFixed(1);
+    
+    return '''import 'package:flutter/material.dart';
+
+class AppShapes extends ThemeExtension<AppShapes> {
+  final double borderRadius;
+
+  const AppShapes({
+    required this.borderRadius,
+  });
+
+  @override
+  AppShapes copyWith({double? borderRadius}) {
+    return AppShapes(
+      borderRadius: borderRadius ?? this.borderRadius,
+    );
+  }
+
+  @override
+  AppShapes lerp(ThemeExtension<AppShapes>? other, double t) {
+    if (other is! AppShapes) {
+      return this;
+    }
+    return AppShapes(
+      borderRadius: borderRadius + (other.borderRadius - borderRadius) * t,
+    );
+  }
+
+  // ライブエディタからのエクスポート値
+  static const defaultShapes = AppShapes(
+    borderRadius: $r,
+  );
+}
+
+extension AppShapesExtension on BuildContext {
+  AppShapes get appShapes => Theme.of(this).extension<AppShapes>() ?? AppShapes.defaultShapes;
+}
+''';
+  }
+
   String _generateAppTypographyCode(String fontFamily, double baseSize, double scaleRatio, int fontWeight, double letterSpacing) {
     return '''import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -367,6 +408,7 @@ extension AppTypographyExtension on BuildContext {
   void _exportAndSaveCode(BuildContext context, ThemeControllerProvider themeController) {
     final colorsCode = _generateAppColorsCode(themeController);
     final spacingCode = _generateAppSpacingCode(themeController.spacingBase);
+    final shapesCode = _generateAppShapesCode(themeController.borderRadius);
     final typographyCode = _generateAppTypographyCode(
       themeController.fontFamily,
       themeController.baseFontSize,
@@ -377,7 +419,7 @@ extension AppTypographyExtension on BuildContext {
 
     if (kIsWeb) {
       // Webブラウザの場合はローカルファイルへの書き込み権限がないため、クリップボードへ保存
-      final fullCode = '/* lib/core/design_system/app_colors.dart */\\n\\n\$colorsCode\\n\\n/* lib/core/design_system/app_spacing.dart */\\n\\n\$spacingCode\\n\\n/* lib/core/design_system/app_typography.dart */\\n\\n\$typographyCode';
+      final fullCode = '/* lib/core/design_system/app_colors.dart */\\n\\n\$colorsCode\\n\\n/* lib/core/design_system/app_spacing.dart */\\n\\n\$spacingCode\\n\\n/* lib/core/design_system/app_shapes.dart */\\n\\n\$shapesCode\\n\\n/* lib/core/design_system/app_typography.dart */\\n\\n\$typographyCode';
       Clipboard.setData(ClipboardData(text: fullCode));
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('✨ Code copied to clipboard (Web Mode)')),
@@ -385,7 +427,7 @@ extension AppTypographyExtension on BuildContext {
     } else {
       // macOSなどのネイティブ環境ではプロジェクトファイルを直接上書きする
       try {
-        saveFilesToDisk(colorsCode: colorsCode, spacingCode: spacingCode, typographyCode: typographyCode);
+        saveFilesToDisk(colorsCode: colorsCode, spacingCode: spacingCode, typographyCode: typographyCode, shapesCode: shapesCode);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('🔥 Source files updated directly! (Native Mode)')),
         );
@@ -444,9 +486,11 @@ extension AppTypographyExtension on BuildContext {
     return Drawer(
       width: 320,
       child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.only(bottom: 80.0), // スクロール最下部でのボタンの押しやすさを確保
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
             const Padding(
               padding: EdgeInsets.all(20.0),
               child: Text('Live Style Editor', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
@@ -513,6 +557,32 @@ extension AppTypographyExtension on BuildContext {
               onChanged: (val) {
                 // スライダーを動かした瞬間にThemeControllerに通知が行き、即座にリビルド連鎖が起きる
                 themeController.updateTheme(spacing: val);
+              },
+            ),
+            const SizedBox(height: 32),
+            const Divider(),
+            
+            // --- Shapes ---
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+              child: Text('Border Radius', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Text(
+                'Current Radius: ${themeController.borderRadius.toStringAsFixed(1)}px',
+                style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.87), height: 1.4),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Slider(
+              value: themeController.borderRadius,
+              min: 0.0,
+              max: 40.0,
+              divisions: 80,
+              label: '${themeController.borderRadius.toStringAsFixed(1)} px',
+              onChanged: (val) {
+                themeController.updateTheme(radius: val);
               },
             ),
             const SizedBox(height: 32),
@@ -636,8 +706,9 @@ extension AppTypographyExtension on BuildContext {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {

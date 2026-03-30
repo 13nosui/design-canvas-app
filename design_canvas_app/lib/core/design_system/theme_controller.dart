@@ -9,6 +9,7 @@ class ThemeControllerProvider extends InheritedWidget {
   final double scaleRatio;
   final int fontWeight;
   final double letterSpacing;
+  final double borderRadius;
   final void Function({
     ThemeMode? mode,
     String? font,
@@ -18,6 +19,7 @@ class ThemeControllerProvider extends InheritedWidget {
     double? ratio,
     int? weight,
     double? letterSpace,
+    double? radius,
   }) updateTheme;
 
   const ThemeControllerProvider({
@@ -30,6 +32,7 @@ class ThemeControllerProvider extends InheritedWidget {
     required this.scaleRatio,
     required this.fontWeight,
     required this.letterSpacing,
+    required this.borderRadius,
     required this.updateTheme,
     required super.child,
   });
@@ -47,6 +50,7 @@ class ThemeControllerProvider extends InheritedWidget {
            baseFontSize != oldWidget.baseFontSize ||
            scaleRatio != oldWidget.scaleRatio ||
            fontWeight != oldWidget.fontWeight ||
-           letterSpacing != oldWidget.letterSpacing;
+           letterSpacing != oldWidget.letterSpacing ||
+           borderRadius != oldWidget.borderRadius;
   }
 }
