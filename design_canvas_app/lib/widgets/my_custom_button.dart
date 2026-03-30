@@ -3,6 +3,7 @@ import '../core/design_system/app_colors.dart';
 import '../core/design_system/app_shapes.dart';
 import '../core/design_system/app_elevations.dart';
 import '../core/design_system/app_borders.dart';
+import '../core/design_system/app_opacity.dart';
 import '../core/design_system/app_spacing.dart';
 
 class MyCustomButton extends StatelessWidget {
@@ -28,7 +29,7 @@ class MyCustomButton extends StatelessWidget {
             vertical: context.appSpacing.m,
           ),
           decoration: BoxDecoration(
-            color: context.appColors.primary,
+            color: context.appColors.primary.withOpacity(context.appOpacity.opacity),
             borderRadius: BorderRadius.circular(context.appShapes.borderRadius),
             border: context.appBorders.borderWidth > 0 ? Border.all(
               color: context.appBorders.borderColor,

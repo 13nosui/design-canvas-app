@@ -387,6 +387,47 @@ extension AppBordersExtension on BuildContext {
 ''';
   }
 
+  String _generateAppOpacityCode(double opacity) {
+    final o = opacity.toStringAsFixed(2);
+    
+    return '''import 'package:flutter/material.dart';
+
+class AppOpacity extends ThemeExtension<AppOpacity> {
+  final double opacity;
+
+  const AppOpacity({
+    required this.opacity,
+  });
+
+  @override
+  AppOpacity copyWith({double? opacity}) {
+    return AppOpacity(
+      opacity: opacity ?? this.opacity,
+    );
+  }
+
+  @override
+  AppOpacity lerp(ThemeExtension<AppOpacity>? other, double t) {
+    if (other is! AppOpacity) {
+      return this;
+    }
+    return AppOpacity(
+      opacity: opacity + (other.opacity - opacity) * t,
+    );
+  }
+
+  // ライブエディタからのエクスポート値
+  static const defaultOpacity = AppOpacity(
+    opacity: $o,
+  );
+}
+
+extension AppOpacityExtension on BuildContext {
+  AppOpacity get appOpacity => Theme.of(this).extension<AppOpacity>() ?? AppOpacity.defaultOpacity;
+}
+''';
+  }
+
   String _generateAppTypographyCode(String fontFamily, double baseSize, double scaleRatio, int fontWeight, double letterSpacing) {
     return '''import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -502,6 +543,7 @@ extension AppTypographyExtension on BuildContext {
     final shapesCode = _generateAppShapesCode(themeController.borderRadius);
     final elevationsCode = _generateAppElevationsCode(themeController.elevation);
     final bordersCode = _generateAppBordersCode(themeController.borderWidth, themeController.borderColor);
+    final opacityCode = _generateAppOpacityCode(themeController.opacity);
     final typographyCode = _generateAppTypographyCode(
       themeController.fontFamily,
       themeController.baseFontSize,
@@ -512,7 +554,7 @@ extension AppTypographyExtension on BuildContext {
 
     if (kIsWeb) {
       // Webブラウザの場合はローカルファイルへの書き込み権限がないため、クリップボードへ保存
-      final fullCode = '/* lib/core/design_system/app_colors.dart */\\n\\n\$colorsCode\\n\\n/* lib/core/design_system/app_spacing.dart */\\n\\n\$spacingCode\\n\\n/* lib/core/design_system/app_shapes.dart */\\n\\n\$shapesCode\\n\\n/* lib/core/design_system/app_elevations.dart */\\n\\n\$elevationsCode\\n\\n/* lib/core/design_system/app_borders.dart */\\n\\n\$bordersCode\\n\\n/* lib/core/design_system/app_typography.dart */\\n\\n\$typographyCode';
+      final fullCode = '/* lib/core/design_system/app_colors.dart */\\n\\n\$colorsCode\\n\\n/* lib/core/design_system/app_spacing.dart */\\n\\n\$spacingCode\\n\\n/* lib/core/design_system/app_shapes.dart */\\n\\n\$shapesCode\\n\\n/* lib/core/design_system/app_elevations.dart */\\n\\n\$elevationsCode\\n\\n/* lib/core/design_system/app_borders.dart */\\n\\n\$bordersCode\\n\\n/* lib/core/design_system/app_opacity.dart */\\n\\n\$opacityCode\\n\\n/* lib/core/design_system/app_typography.dart */\\n\\n\$typographyCode';
       Clipboard.setData(ClipboardData(text: fullCode));
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('✨ Code copied to clipboard (Web Mode)')),
@@ -520,7 +562,7 @@ extension AppTypographyExtension on BuildContext {
     } else {
       // macOSなどのネイティブ環境ではプロジェクトファイルを直接上書きする
       try {
-        saveFilesToDisk(colorsCode: colorsCode, spacingCode: spacingCode, typographyCode: typographyCode, shapesCode: shapesCode, elevationsCode: elevationsCode, bordersCode: bordersCode);
+        saveFilesToDisk(colorsCode: colorsCode, spacingCode: spacingCode, typographyCode: typographyCode, shapesCode: shapesCode, elevationsCode: elevationsCode, bordersCode: bordersCode, opacityCode: opacityCode);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('🔥 Source files updated directly! (Native Mode)')),
         );
@@ -762,6 +804,32 @@ extension AppTypographyExtension on BuildContext {
                   );
                 }).toList(),
               ),
+            ),
+            const SizedBox(height: 32),
+            const Divider(),
+
+            // --- Opacity ---
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+              child: Text('Opacity', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Text(
+                'Current Opacity: ${(themeController.opacity * 100).toStringAsFixed(0)}%',
+                style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.87), height: 1.4),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Slider(
+              value: themeController.opacity,
+              min: 0.0,
+              max: 1.0,
+              divisions: 20,
+              label: '${(themeController.opacity * 100).toStringAsFixed(0)} %',
+              onChanged: (val) {
+                themeController.updateTheme(opacity: val);
+              },
             ),
             const SizedBox(height: 32),
             const Divider(),

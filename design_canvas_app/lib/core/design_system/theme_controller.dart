@@ -13,6 +13,7 @@ class ThemeControllerProvider extends InheritedWidget {
   final double elevation;
   final double borderWidth;
   final Color borderColor;
+  final double opacity;
   final void Function({
     ThemeMode? mode,
     String? font,
@@ -26,6 +27,7 @@ class ThemeControllerProvider extends InheritedWidget {
     double? elevation,
     double? borderWidth,
     Color? borderColor,
+    double? opacity,
   }) updateTheme;
 
   const ThemeControllerProvider({
@@ -42,6 +44,7 @@ class ThemeControllerProvider extends InheritedWidget {
     required this.elevation,
     required this.borderWidth,
     required this.borderColor,
+    required this.opacity,
     required this.updateTheme,
     required super.child,
   });
@@ -63,6 +66,7 @@ class ThemeControllerProvider extends InheritedWidget {
            borderRadius != oldWidget.borderRadius ||
            elevation != oldWidget.elevation ||
            borderWidth != oldWidget.borderWidth ||
-           borderColor != oldWidget.borderColor;
+           borderColor != oldWidget.borderColor ||
+           opacity != oldWidget.opacity;
   }
 }
