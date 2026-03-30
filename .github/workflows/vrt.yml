@@ -7,6 +7,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./design_canvas_app
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -27,4 +30,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: golden-test-failures
-          path: test/failures/
+          path: "**/failures/"
