@@ -15,6 +15,9 @@ class ThemeControllerProvider extends InheritedWidget {
   final Color borderColor;
   final double opacity;
   final double blur;
+  final bool useGradient;
+  final Color gradientStartColor;
+  final Color gradientEndColor;
   final void Function({
     ThemeMode? mode,
     String? font,
@@ -30,6 +33,9 @@ class ThemeControllerProvider extends InheritedWidget {
     Color? borderColor,
     double? opacity,
     double? blur,
+    bool? useGradient,
+    Color? gradientStartColor,
+    Color? gradientEndColor,
   }) updateTheme;
 
   const ThemeControllerProvider({
@@ -48,6 +54,9 @@ class ThemeControllerProvider extends InheritedWidget {
     required this.borderColor,
     required this.opacity,
     required this.blur,
+    required this.useGradient,
+    required this.gradientStartColor,
+    required this.gradientEndColor,
     required this.updateTheme,
     required super.child,
   });
@@ -71,6 +80,9 @@ class ThemeControllerProvider extends InheritedWidget {
            borderWidth != oldWidget.borderWidth ||
            borderColor != oldWidget.borderColor ||
            opacity != oldWidget.opacity ||
-           blur != oldWidget.blur;
+           blur != oldWidget.blur ||
+           useGradient != oldWidget.useGradient ||
+           gradientStartColor != oldWidget.gradientStartColor ||
+           gradientEndColor != oldWidget.gradientEndColor;
   }
 }

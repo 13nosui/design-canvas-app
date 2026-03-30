@@ -469,6 +469,66 @@ extension AppBlurExtension on BuildContext {
 ''';
   }
 
+  String _generateAppGradientsCode(bool useGradient, Color startColor, Color endColor) {
+    String _colorToHex(Color color) {
+      return '0x${color.value.toRadixString(16).padLeft(8, '0').toUpperCase()}';
+    }
+
+    final startHex = _colorToHex(startColor);
+    final endHex = _colorToHex(endColor);
+
+    return '''import 'package:flutter/material.dart';
+
+class AppGradients extends ThemeExtension<AppGradients> {
+  final bool useGradient;
+  final Color startColor;
+  final Color endColor;
+
+  const AppGradients({
+    required this.useGradient,
+    required this.startColor,
+    required this.endColor,
+  });
+
+  @override
+  AppGradients copyWith({
+    bool? useGradient,
+    Color? startColor,
+    Color? endColor,
+  }) {
+    return AppGradients(
+      useGradient: useGradient ?? this.useGradient,
+      startColor: startColor ?? this.startColor,
+      endColor: endColor ?? this.endColor,
+    );
+  }
+
+  @override
+  AppGradients lerp(ThemeExtension<AppGradients>? other, double t) {
+    if (other is! AppGradients) {
+      return this;
+    }
+    return AppGradients(
+      useGradient: t < 0.5 ? useGradient : other.useGradient,
+      startColor: Color.lerp(startColor, other.startColor, t) ?? startColor,
+      endColor: Color.lerp(endColor, other.endColor, t) ?? endColor,
+    );
+  }
+
+  // ライブエディタからのエクスポート値
+  static const defaultGradients = AppGradients(
+    useGradient: $useGradient,
+    startColor: Color($startHex),
+    endColor: Color($endHex),
+  );
+}
+
+extension AppGradientsExtension on BuildContext {
+  AppGradients get appGradients => Theme.of(this).extension<AppGradients>() ?? AppGradients.defaultGradients;
+}
+''';
+  }
+
   String _generateAppTypographyCode(String fontFamily, double baseSize, double scaleRatio, int fontWeight, double letterSpacing) {
     return '''import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -586,6 +646,7 @@ extension AppTypographyExtension on BuildContext {
     final bordersCode = _generateAppBordersCode(themeController.borderWidth, themeController.borderColor);
     final opacityCode = _generateAppOpacityCode(themeController.opacity);
     final blurCode = _generateAppBlurCode(themeController.blur);
+    final gradientsCode = _generateAppGradientsCode(themeController.useGradient, themeController.gradientStartColor, themeController.gradientEndColor);
     final typographyCode = _generateAppTypographyCode(
       themeController.fontFamily,
       themeController.baseFontSize,
@@ -596,7 +657,7 @@ extension AppTypographyExtension on BuildContext {
 
     if (kIsWeb) {
       // Webブラウザの場合はローカルファイルへの書き込み権限がないため、クリップボードへ保存
-      final fullCode = '/* lib/core/design_system/app_colors.dart */\\n\\n\$colorsCode\\n\\n/* lib/core/design_system/app_spacing.dart */\\n\\n\$spacingCode\\n\\n/* lib/core/design_system/app_shapes.dart */\\n\\n\$shapesCode\\n\\n/* lib/core/design_system/app_elevations.dart */\\n\\n\$elevationsCode\\n\\n/* lib/core/design_system/app_borders.dart */\\n\\n\$bordersCode\\n\\n/* lib/core/design_system/app_opacity.dart */\\n\\n\$opacityCode\\n\\n/* lib/core/design_system/app_blur.dart */\\n\\n\$blurCode\\n\\n/* lib/core/design_system/app_typography.dart */\\n\\n\$typographyCode';
+      final fullCode = '/* lib/core/design_system/app_colors.dart */\\n\\n\$colorsCode\\n\\n/* lib/core/design_system/app_spacing.dart */\\n\\n\$spacingCode\\n\\n/* lib/core/design_system/app_shapes.dart */\\n\\n\$shapesCode\\n\\n/* lib/core/design_system/app_elevations.dart */\\n\\n\$elevationsCode\\n\\n/* lib/core/design_system/app_borders.dart */\\n\\n\$bordersCode\\n\\n/* lib/core/design_system/app_opacity.dart */\\n\\n\$opacityCode\\n\\n/* lib/core/design_system/app_blur.dart */\\n\\n\$blurCode\\n\\n/* lib/core/design_system/app_gradients.dart */\\n\\n\$gradientsCode\\n\\n/* lib/core/design_system/app_typography.dart */\\n\\n\$typographyCode';
       Clipboard.setData(ClipboardData(text: fullCode));
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('✨ Code copied to clipboard (Web Mode)')),
@@ -604,7 +665,7 @@ extension AppTypographyExtension on BuildContext {
     } else {
       // macOSなどのネイティブ環境ではプロジェクトファイルを直接上書きする
       try {
-        saveFilesToDisk(colorsCode: colorsCode, spacingCode: spacingCode, typographyCode: typographyCode, shapesCode: shapesCode, elevationsCode: elevationsCode, bordersCode: bordersCode, opacityCode: opacityCode, blurCode: blurCode);
+        saveFilesToDisk(colorsCode: colorsCode, spacingCode: spacingCode, typographyCode: typographyCode, shapesCode: shapesCode, elevationsCode: elevationsCode, bordersCode: bordersCode, opacityCode: opacityCode, blurCode: blurCode, gradientsCode: gradientsCode);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('🔥 Source files updated directly! (Native Mode)')),
         );
@@ -899,6 +960,112 @@ extension AppTypographyExtension on BuildContext {
                 themeController.updateTheme(blur: val);
               },
             ),
+            const SizedBox(height: 32),
+            const Divider(),
+
+            // --- Gradients ---
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Use Gradient', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                  Switch(
+                    value: themeController.useGradient,
+                    onChanged: (val) {
+                      themeController.updateTheme(useGradient: val);
+                    },
+                  ),
+                ],
+              ),
+            ),
+            if (themeController.useGradient) ...[
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+                child: Text('Gradient Start Color', style: TextStyle(fontSize: 14)),
+              ),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: Row(
+                  children: [
+                    Colors.black,
+                    Colors.white,
+                    Colors.grey,
+                    ...Colors.primaries,
+                  ].map((color) {
+                    return GestureDetector(
+                      onTap: () {
+                        themeController.updateTheme(gradientStartColor: color);
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 12),
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: themeController.gradientStartColor.value == color.value ? Colors.white : Colors.transparent,
+                            width: 3,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+                child: Text('Gradient End Color', style: TextStyle(fontSize: 14)),
+              ),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: Row(
+                  children: [
+                    Colors.black,
+                    Colors.white,
+                    Colors.grey,
+                    ...Colors.primaries,
+                  ].map((color) {
+                    return GestureDetector(
+                      onTap: () {
+                        themeController.updateTheme(gradientEndColor: color);
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 12),
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: themeController.gradientEndColor.value == color.value ? Colors.white : Colors.transparent,
+                            width: 3,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
             const SizedBox(height: 32),
             const Divider(),
 

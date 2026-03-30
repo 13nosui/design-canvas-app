@@ -6,6 +6,7 @@ import '../core/design_system/app_elevations.dart';
 import '../core/design_system/app_borders.dart';
 import '../core/design_system/app_opacity.dart';
 import '../core/design_system/app_blur.dart';
+import '../core/design_system/app_gradients.dart';
 import '../core/design_system/app_spacing.dart';
 
 class MyCustomButton extends StatelessWidget {
@@ -49,7 +50,17 @@ class MyCustomButton extends StatelessWidget {
                   vertical: context.appSpacing.m,
                 ),
                 decoration: BoxDecoration(
-                  color: context.appColors.primary.withOpacity(context.appOpacity.opacity),
+                  color: context.appGradients.useGradient ? null : context.appColors.primary.withOpacity(context.appOpacity.opacity),
+                  gradient: context.appGradients.useGradient
+                      ? LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            context.appGradients.startColor.withOpacity(context.appOpacity.opacity),
+                            context.appGradients.endColor.withOpacity(context.appOpacity.opacity),
+                          ],
+                        )
+                      : null,
                   border: context.appBorders.borderWidth > 0 ? Border.all(
                     color: context.appBorders.borderColor,
                     width: context.appBorders.borderWidth,

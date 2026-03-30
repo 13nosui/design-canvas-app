@@ -7,6 +7,7 @@ import 'core/design_system/app_elevations.dart';
 import 'core/design_system/app_borders.dart';
 import 'core/design_system/app_opacity.dart';
 import 'core/design_system/app_blur.dart';
+import 'core/design_system/app_gradients.dart';
 import 'core/design_system/theme_controller.dart';
 import 'presentation/pages/design_canvas_page.dart';
 
@@ -36,6 +37,9 @@ class _MyAppState extends State<MyApp> {
   Color _borderColor = AppColors.lightColors.primary;
   double _opacity = 1.0;
   double _blur = 0.0;
+  bool _useGradient = false;
+  Color _gradientStartColor = AppColors.lightColors.primary;
+  Color _gradientEndColor = const Color(0xFF3700B3);
 
   void _updateTheme({
     ThemeMode? mode,
@@ -52,6 +56,9 @@ class _MyAppState extends State<MyApp> {
     Color? borderColor,
     double? opacity,
     double? blur,
+    bool? useGradient,
+    Color? gradientStartColor,
+    Color? gradientEndColor,
   }) {
     setState(() {
       if (mode != null) _themeMode = mode;
@@ -68,6 +75,9 @@ class _MyAppState extends State<MyApp> {
       if (borderColor != null) _borderColor = borderColor;
       if (opacity != null) _opacity = opacity;
       if (blur != null) _blur = blur;
+      if (useGradient != null) _useGradient = useGradient;
+      if (gradientStartColor != null) _gradientStartColor = gradientStartColor;
+      if (gradientEndColor != null) _gradientEndColor = gradientEndColor;
     });
   }
 
@@ -117,6 +127,11 @@ class _MyAppState extends State<MyApp> {
         ),
         AppOpacity(opacity: _opacity),
         AppBlur(blur: _blur),
+        AppGradients(
+          useGradient: _useGradient,
+          startColor: _gradientStartColor,
+          endColor: _gradientEndColor,
+        ),
         typo,
       ],
     );
@@ -147,6 +162,9 @@ class _MyAppState extends State<MyApp> {
       borderColor: _borderColor,
       opacity: _opacity,
       blur: _blur,
+      useGradient: _useGradient,
+      gradientStartColor: _gradientStartColor,
+      gradientEndColor: _gradientEndColor,
       updateTheme: _updateTheme,
       child: MaterialApp(
         title: 'Design Canvas App',
