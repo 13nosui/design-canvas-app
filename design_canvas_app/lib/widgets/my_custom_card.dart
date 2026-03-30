@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/design_system/app_colors.dart';
 import '../core/design_system/app_shapes.dart';
 import '../core/design_system/app_elevations.dart';
+import '../core/design_system/app_borders.dart';
 import '../core/design_system/app_spacing.dart';
 
 class MyCustomCard extends StatelessWidget {
@@ -22,10 +23,10 @@ class MyCustomCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.appColors.surface,
         borderRadius: BorderRadius.circular(context.appShapes.borderRadius),
-        border: Border.all(
-          color: context.appColors.primary.withOpacity(0.5),
-          width: 2,
-        ),
+        border: context.appBorders.borderWidth > 0 ? Border.all(
+          color: context.appBorders.borderColor,
+          width: context.appBorders.borderWidth,
+        ) : null,
         boxShadow: context.appElevations.elevation > 0 ? [
           BoxShadow(
             color: Theme.of(context).shadowColor.withOpacity(0.08),

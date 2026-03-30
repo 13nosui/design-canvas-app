@@ -4,6 +4,7 @@ import 'core/design_system/app_spacing.dart';
 import 'core/design_system/app_typography.dart';
 import 'core/design_system/app_shapes.dart';
 import 'core/design_system/app_elevations.dart';
+import 'core/design_system/app_borders.dart';
 import 'core/design_system/theme_controller.dart';
 import 'presentation/pages/design_canvas_page.dart';
 
@@ -29,6 +30,8 @@ class _MyAppState extends State<MyApp> {
   double _letterSpacing = 0.0;
   double _borderRadius = 8.0;
   double _elevation = 2.0;
+  double _borderWidth = 0.0;
+  Color _borderColor = AppColors.lightColors.primary;
 
   void _updateTheme({
     ThemeMode? mode,
@@ -41,6 +44,8 @@ class _MyAppState extends State<MyApp> {
     double? letterSpace,
     double? radius,
     double? elevation,
+    double? borderWidth,
+    Color? borderColor,
   }) {
     setState(() {
       if (mode != null) _themeMode = mode;
@@ -53,6 +58,8 @@ class _MyAppState extends State<MyApp> {
       if (letterSpace != null) _letterSpacing = letterSpace;
       if (radius != null) _borderRadius = radius;
       if (elevation != null) _elevation = elevation;
+      if (borderWidth != null) _borderWidth = borderWidth;
+      if (borderColor != null) _borderColor = borderColor;
     });
   }
 
@@ -96,6 +103,10 @@ class _MyAppState extends State<MyApp> {
         ),
         AppShapes(borderRadius: _borderRadius),
         AppElevations(elevation: _elevation),
+        AppBorders(
+          borderWidth: _borderWidth,
+          borderColor: _borderColor,
+        ),
         typo,
       ],
     );
@@ -122,6 +133,8 @@ class _MyAppState extends State<MyApp> {
       letterSpacing: _letterSpacing,
       borderRadius: _borderRadius,
       elevation: _elevation,
+      borderWidth: _borderWidth,
+      borderColor: _borderColor,
       updateTheme: _updateTheme,
       child: MaterialApp(
         title: 'Design Canvas App',

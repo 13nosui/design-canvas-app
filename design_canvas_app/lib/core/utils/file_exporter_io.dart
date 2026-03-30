@@ -1,11 +1,12 @@
 import 'dart:io';
 
-void saveFilesToDisk({required String colorsCode, required String spacingCode, required String typographyCode, required String shapesCode, required String elevationsCode}) {
+void saveFilesToDisk({required String colorsCode, required String spacingCode, required String typographyCode, required String shapesCode, required String elevationsCode, required String bordersCode}) {
   final colorFile = File('lib/core/design_system/app_colors.dart');
   final spacingFile = File('lib/core/design_system/app_spacing.dart');
   final typographyFile = File('lib/core/design_system/app_typography.dart');
   final shapesFile = File('lib/core/design_system/app_shapes.dart');
   final elevationsFile = File('lib/core/design_system/app_elevations.dart');
+  final bordersFile = File('lib/core/design_system/app_borders.dart');
 
   if (colorFile.existsSync() && spacingFile.existsSync()) {
     colorFile.writeAsStringSync(colorsCode);
@@ -25,6 +26,11 @@ void saveFilesToDisk({required String colorsCode, required String spacingCode, r
       elevationsFile.createSync(recursive: true);
     }
     elevationsFile.writeAsStringSync(elevationsCode);
+
+    if (!bordersFile.existsSync()) {
+      bordersFile.createSync(recursive: true);
+    }
+    bordersFile.writeAsStringSync(bordersCode);
   } else {
     throw Exception('Files not found. Ensure you are running from the project root.');
   }

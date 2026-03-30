@@ -1,3 +1,3 @@
-void saveFilesToDisk({required String colorsCode, required String spacingCode, required String typographyCode, required String shapesCode, required String elevationsCode}) {
+void saveFilesToDisk({required String colorsCode, required String spacingCode, required String typographyCode, required String shapesCode, required String elevationsCode, required String bordersCode}) {
   throw UnsupportedError('Saving files to disk is not supported on the web platform.');
 }

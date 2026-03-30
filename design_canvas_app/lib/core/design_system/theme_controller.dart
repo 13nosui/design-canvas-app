@@ -11,6 +11,8 @@ class ThemeControllerProvider extends InheritedWidget {
   final double letterSpacing;
   final double borderRadius;
   final double elevation;
+  final double borderWidth;
+  final Color borderColor;
   final void Function({
     ThemeMode? mode,
     String? font,
@@ -22,6 +24,8 @@ class ThemeControllerProvider extends InheritedWidget {
     double? letterSpace,
     double? radius,
     double? elevation,
+    double? borderWidth,
+    Color? borderColor,
   }) updateTheme;
 
   const ThemeControllerProvider({
@@ -36,6 +40,8 @@ class ThemeControllerProvider extends InheritedWidget {
     required this.letterSpacing,
     required this.borderRadius,
     required this.elevation,
+    required this.borderWidth,
+    required this.borderColor,
     required this.updateTheme,
     required super.child,
   });
@@ -55,6 +61,8 @@ class ThemeControllerProvider extends InheritedWidget {
            fontWeight != oldWidget.fontWeight ||
            letterSpacing != oldWidget.letterSpacing ||
            borderRadius != oldWidget.borderRadius ||
-           elevation != oldWidget.elevation;
+           elevation != oldWidget.elevation ||
+           borderWidth != oldWidget.borderWidth ||
+           borderColor != oldWidget.borderColor;
   }
 }

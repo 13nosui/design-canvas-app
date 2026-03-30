@@ -337,6 +337,56 @@ extension AppElevationsExtension on BuildContext {
 ''';
   }
 
+  String _generateAppBordersCode(double borderWidth, Color borderColor) {
+    final w = borderWidth.toStringAsFixed(1);
+    final c = '0x${borderColor.value.toRadixString(16).padLeft(8, '0').toUpperCase()}';
+    
+    return '''import 'package:flutter/material.dart';
+
+class AppBorders extends ThemeExtension<AppBorders> {
+  final double borderWidth;
+  final Color borderColor;
+
+  const AppBorders({
+    required this.borderWidth,
+    required this.borderColor,
+  });
+
+  @override
+  AppBorders copyWith({
+    double? borderWidth,
+    Color? borderColor,
+  }) {
+    return AppBorders(
+      borderWidth: borderWidth ?? this.borderWidth,
+      borderColor: borderColor ?? this.borderColor,
+    );
+  }
+
+  @override
+  AppBorders lerp(ThemeExtension<AppBorders>? other, double t) {
+    if (other is! AppBorders) {
+      return this;
+    }
+    return AppBorders(
+      borderWidth: borderWidth + (other.borderWidth - borderWidth) * t,
+      borderColor: Color.lerp(borderColor, other.borderColor, t) ?? borderColor,
+    );
+  }
+
+  // ライブエディタからのエクスポート値
+  static const defaultBorders = AppBorders(
+    borderWidth: $w,
+    borderColor: Color($c),
+  );
+}
+
+extension AppBordersExtension on BuildContext {
+  AppBorders get appBorders => Theme.of(this).extension<AppBorders>() ?? AppBorders.defaultBorders;
+}
+''';
+  }
+
   String _generateAppTypographyCode(String fontFamily, double baseSize, double scaleRatio, int fontWeight, double letterSpacing) {
     return '''import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -451,6 +501,7 @@ extension AppTypographyExtension on BuildContext {
     final spacingCode = _generateAppSpacingCode(themeController.spacingBase);
     final shapesCode = _generateAppShapesCode(themeController.borderRadius);
     final elevationsCode = _generateAppElevationsCode(themeController.elevation);
+    final bordersCode = _generateAppBordersCode(themeController.borderWidth, themeController.borderColor);
     final typographyCode = _generateAppTypographyCode(
       themeController.fontFamily,
       themeController.baseFontSize,
@@ -461,7 +512,7 @@ extension AppTypographyExtension on BuildContext {
 
     if (kIsWeb) {
       // Webブラウザの場合はローカルファイルへの書き込み権限がないため、クリップボードへ保存
-      final fullCode = '/* lib/core/design_system/app_colors.dart */\\n\\n\$colorsCode\\n\\n/* lib/core/design_system/app_spacing.dart */\\n\\n\$spacingCode\\n\\n/* lib/core/design_system/app_shapes.dart */\\n\\n\$shapesCode\\n\\n/* lib/core/design_system/app_elevations.dart */\\n\\n\$elevationsCode\\n\\n/* lib/core/design_system/app_typography.dart */\\n\\n\$typographyCode';
+      final fullCode = '/* lib/core/design_system/app_colors.dart */\\n\\n\$colorsCode\\n\\n/* lib/core/design_system/app_spacing.dart */\\n\\n\$spacingCode\\n\\n/* lib/core/design_system/app_shapes.dart */\\n\\n\$shapesCode\\n\\n/* lib/core/design_system/app_elevations.dart */\\n\\n\$elevationsCode\\n\\n/* lib/core/design_system/app_borders.dart */\\n\\n\$bordersCode\\n\\n/* lib/core/design_system/app_typography.dart */\\n\\n\$typographyCode';
       Clipboard.setData(ClipboardData(text: fullCode));
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('✨ Code copied to clipboard (Web Mode)')),
@@ -469,7 +520,7 @@ extension AppTypographyExtension on BuildContext {
     } else {
       // macOSなどのネイティブ環境ではプロジェクトファイルを直接上書きする
       try {
-        saveFilesToDisk(colorsCode: colorsCode, spacingCode: spacingCode, typographyCode: typographyCode, shapesCode: shapesCode, elevationsCode: elevationsCode);
+        saveFilesToDisk(colorsCode: colorsCode, spacingCode: spacingCode, typographyCode: typographyCode, shapesCode: shapesCode, elevationsCode: elevationsCode, bordersCode: bordersCode);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('🔥 Source files updated directly! (Native Mode)')),
         );
@@ -656,6 +707,65 @@ extension AppTypographyExtension on BuildContext {
             const SizedBox(height: 32),
             const Divider(),
             
+            // --- Borders ---
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+              child: Text('Border Width', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Text(
+                'Current Border: ${themeController.borderWidth.toStringAsFixed(1)}px',
+                style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.87), height: 1.4),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Slider(
+              value: themeController.borderWidth,
+              min: 0.0,
+              max: 8.0,
+              divisions: 16,
+              label: '${themeController.borderWidth.toStringAsFixed(1)} px',
+              onChanged: (val) {
+                themeController.updateTheme(borderWidth: val);
+              },
+            ),
+            const SizedBox(height: 16),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+              child: Text('Border Color', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  Theme.of(context).colorScheme.onSurface, // Text color basically (black/white)
+                  ...paletteColors
+                ].map((color) {
+                  final isSelected = themeController.borderColor.value == color.value;
+                  return GestureDetector(
+                    onTap: () => themeController.updateTheme(borderColor: color),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                        border: isSelected ? Border.all(color: Theme.of(context).colorScheme.primary, width: 3) : Border.all(color: Colors.grey.withOpacity(0.5)),
+                        boxShadow: [
+                          BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 4, offset: const Offset(0, 2))
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 32),
+            const Divider(),
+
             // --- Typography ---
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
