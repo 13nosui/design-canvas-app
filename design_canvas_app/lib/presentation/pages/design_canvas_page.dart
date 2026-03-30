@@ -7,8 +7,7 @@ import 'package:flutter/services.dart';
 import '../../core/design_system/app_colors.dart';
 import '../../core/design_system/device_specs.dart';
 import '../../core/design_system/theme_controller.dart';
-import '../../core/navigation/sitemap_definition.dart';
-import '../../core/navigation/sitemap_widgets.g.dart';
+import '../../core/navigation/sitemap.g.dart';
 import '../../core/utils/file_exporter_stub.dart' if (dart.library.io) '../../core/utils/file_exporter_io.dart';
 
 enum PreviewMode {
@@ -27,6 +26,7 @@ class DesignCanvasPage extends StatefulWidget {
 
 class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerProviderStateMixin {
   PreviewMode _previewMode = PreviewMode.free;
+  bool _showBackgroundDecor = true;
 
   final double deviceSpacing = 64.0;
 
@@ -86,7 +86,7 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
     final positions = <String, Offset>{};
     double currentX = 100.0;
     
-    for (final key in sitemapDefinition.keys) {
+    for (final key in generatedRoutes.keys) {
       positions[key] = Offset(currentX, 200.0);
       currentX += screenWidth + xSpacing;
     }
@@ -677,34 +677,58 @@ extension AppTypographyExtension on BuildContext {
     }
   }
 
-  Widget _buildDevicePreview(DeviceSpec device, Widget content) {
-    return Container(
-      width: device.width,
-      height: device.height,
-      decoration: BoxDecoration(
-        color: Colors.black,
-        borderRadius: BorderRadius.circular(device.borderRadius),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 30,
-            offset: Offset(0, 15),
-          )
+  Widget _buildDevicePreview(DeviceSpec device, CanvasRoute? route, Widget content) {
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+        if (route != null) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              '🏷️ ${route.path} (${route.name})',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.surface,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
         ],
-      ),
-      padding: EdgeInsets.all(device.bezelWidth),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(
-          (device.borderRadius - device.bezelWidth).clamp(0.0, double.infinity),
-        ),
-        child: Container(
-          color: Theme.of(context).colorScheme.surface,
-          child: AbsorbPointer(
-            child: content,
+        Container(
+          width: device.width,
+          height: device.height,
+          decoration: BoxDecoration(
+            color: Colors.black,
+            borderRadius: BorderRadius.circular(device.borderRadius),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 30,
+                offset: Offset(0, 15),
+              )
+            ],
+          ),
+          padding: EdgeInsets.all(device.bezelWidth),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(
+              (device.borderRadius - device.bezelWidth).clamp(0.0, double.infinity),
+            ),
+            child: Container(
+              color: Theme.of(context).colorScheme.surface,
+              child: content,
+            ),
           ),
         ),
-      ),
-    );
+      ],
+    ),
+   );
   }
 
   // 右側に引き出される「ライブ・スタイル・エディタ」の構築
@@ -732,6 +756,23 @@ extension AppTypographyExtension on BuildContext {
             const Padding(
               padding: EdgeInsets.all(20.0),
               child: Text('Live Style Editor', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Show Background Decor', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  Switch(
+                    value: _showBackgroundDecor,
+                    onChanged: (val) {
+                      setState(() {
+                        _showBackgroundDecor = val;
+                      });
+                    },
+                  ),
+                ],
+              ),
             ),
             const Divider(),
             
@@ -1191,9 +1232,26 @@ extension AppTypographyExtension on BuildContext {
   );
 }
 
+  Widget _buildDecorCircle(Color color, double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: [color, color.withOpacity(0.0)],
+          stops: const [0.0, 1.0],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final positions = _calculatePositions();
+    final themeController = ThemeControllerProvider.of(context);
+    final primary = themeController.primaryColor;
+    final complement = HSLColor.fromColor(primary).withHue((HSLColor.fromColor(primary).hue + 180) % 360).toColor();
 
     return Scaffold(
       appBar: AppBar(
@@ -1259,15 +1317,55 @@ extension AppTypographyExtension on BuildContext {
                   color: Theme.of(context).scaffoldBackgroundColor,
                 ),
               ),
-              Positioned.fill(
-                child: CustomPaint(
-                  painter: SitemapPainter(
-                    sitemap: sitemapDefinition,
-                    positions: positions,
-                    screenWidth: screenWidth,
-                    screenHeight: screenHeight,
-                    lineColor: context.appColors.primary,
+              if (_showBackgroundDecor)
+                Positioned.fill(
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        left: -200,
+                        top: 100,
+                        child: _buildDecorCircle(primary.withOpacity(0.4), 1200),
+                      ),
+                      Positioned(
+                        left: 1000,
+                        top: -400,
+                        child: _buildDecorCircle(complement.withOpacity(0.3), 1400),
+                      ),
+                      Positioned(
+                        left: 2800,
+                        top: 500,
+                        child: _buildDecorCircle(Colors.pinkAccent.withOpacity(0.3), 1000),
+                      ),
+                      Positioned(
+                        left: 4200,
+                        top: -100,
+                        child: _buildDecorCircle(Colors.cyanAccent.withOpacity(0.3), 1500),
+                      ),
+                      Positioned(
+                        left: 6000,
+                        top: 600,
+                        child: _buildDecorCircle(primary.withOpacity(0.35), 1100),
+                      ),
+                    ],
                   ),
+                ),
+              Positioned.fill(
+                child: Builder(
+                  builder: (context) {
+                    final sitemapDefinition = <String, List<String>>{};
+                    for (final r in generatedRoutes.values) {
+                      sitemapDefinition[r.name] = r.childrenNames;
+                    }
+                    return CustomPaint(
+                      painter: SitemapPainter(
+                        sitemap: sitemapDefinition,
+                        positions: positions,
+                        screenWidth: screenWidth,
+                        screenHeight: screenHeight,
+                        lineColor: context.appColors.primary,
+                      ),
+                    );
+                  }
                 ),
               ),
               for (final entry in positions.entries)
@@ -1297,20 +1395,26 @@ extension AppTypographyExtension on BuildContext {
                             children: AppDevices.values.asMap().entries.map((devEntry) {
                               final idx = devEntry.key;
                               final dev = devEntry.value;
-                              final content = generatedScreenBuilders[entry.key]?.call(context) ?? const Center(child: Text('Not Found'));
+                              final route = generatedRoutes[entry.key];
+                              final content = route?.builder.call(context) ?? const Center(child: Text('Not Found'));
                               
                               return Padding(
                                 padding: EdgeInsets.only(
                                   right: idx < AppDevices.values.length - 1 ? deviceSpacing : 0,
                                 ),
-                                child: _buildDevicePreview(dev, content),
+                                child: _buildDevicePreview(dev, route, content),
                               );
                             }).toList(),
                           )
-                        : _buildDevicePreview(
-                            _singleDevice!,
-                            generatedScreenBuilders[entry.key]?.call(context) ?? const Center(child: Text('Not Found')),
-                          ),
+                        : (() {
+                            final route = generatedRoutes[entry.key];
+                            final content = route?.builder.call(context) ?? const Center(child: Text('Not Found'));
+                            return _buildDevicePreview(
+                              _singleDevice!,
+                              route,
+                              content,
+                            );
+                          })(),
                   ),
                 ),
             ],

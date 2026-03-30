@@ -12,19 +12,21 @@ class HomePage extends StatelessWidget {
         elevation: 1,
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Home',
-              style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 24),
-            MyCustomButton(
-              text: 'Check Color Updates!',
-              onPressed: () {},
-            ),
-          ],
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Home',
+                style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 24),
+              MyCustomButton(
+                text: 'Check Color Updates!',
+                onPressed: () {},
+              ),
+            ],
+          ),
         ),
       ),
     );
