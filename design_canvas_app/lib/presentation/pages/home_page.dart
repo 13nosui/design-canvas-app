@@ -16,9 +16,9 @@ class HomePage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
+            Text(
               'Home',
-              style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+              style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 24),
             MyCustomButton(

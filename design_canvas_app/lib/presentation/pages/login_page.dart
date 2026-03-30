@@ -11,10 +11,10 @@ class LoginPage extends StatelessWidget {
         title: const Text('Login'),
         elevation: 1,
       ),
-      body: const Center(
+      body: Center(
         child: Text(
           'Login',
-          style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+          style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.bold),
         ),
       ),
     );

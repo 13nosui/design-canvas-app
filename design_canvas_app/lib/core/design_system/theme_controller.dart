@@ -3,12 +3,16 @@ import 'package:flutter/material.dart';
 class ThemeControllerProvider extends InheritedWidget {
   final Color primaryColor;
   final double spacingBase;
-  final void Function({Color? primary, double? spacing}) updateTheme;
+  final double baseFontSize;
+  final double scaleRatio;
+  final void Function({Color? primary, double? spacing, double? fontSize, double? ratio}) updateTheme;
 
   const ThemeControllerProvider({
     super.key,
     required this.primaryColor,
     required this.spacingBase,
+    required this.baseFontSize,
+    required this.scaleRatio,
     required this.updateTheme,
     required super.child,
   });
@@ -19,6 +23,9 @@ class ThemeControllerProvider extends InheritedWidget {
 
   @override
   bool updateShouldNotify(ThemeControllerProvider oldWidget) {
-    return primaryColor != oldWidget.primaryColor || spacingBase != oldWidget.spacingBase;
+    return primaryColor != oldWidget.primaryColor || 
+           spacingBase != oldWidget.spacingBase ||
+           baseFontSize != oldWidget.baseFontSize ||
+           scaleRatio != oldWidget.scaleRatio;
   }
 }

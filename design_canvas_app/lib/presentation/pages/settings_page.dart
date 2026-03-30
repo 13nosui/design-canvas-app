@@ -11,10 +11,10 @@ class SettingsPage extends StatelessWidget {
         title: const Text('Settings'),
         elevation: 1,
       ),
-      body: const Center(
+      body: Center(
         child: Text(
           'Settings',
-          style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+          style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.bold),
         ),
       ),
     );

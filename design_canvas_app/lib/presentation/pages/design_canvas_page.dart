@@ -224,13 +224,86 @@ extension AppSpacingExtension on BuildContext {
 ''';
   }
 
+  String _generateAppTypographyCode(double baseSize, double scaleRatio) {
+    return '''import 'dart:math' as math;
+import 'package:flutter/material.dart';
+
+class AppTypography extends ThemeExtension<AppTypography> {
+  final double baseSize;
+  final double scaleRatio;
+
+  const AppTypography({
+    required this.baseSize,
+    required this.scaleRatio,
+  });
+
+  @override
+  AppTypography copyWith({
+    double? baseSize,
+    double? scaleRatio,
+  }) {
+    return AppTypography(
+      baseSize: baseSize ?? this.baseSize,
+      scaleRatio: scaleRatio ?? this.scaleRatio,
+    );
+  }
+
+  @override
+  AppTypography lerp(ThemeExtension<AppTypography>? other, double t) {
+    if (other is! AppTypography) {
+      return this;
+    }
+    return AppTypography(
+      baseSize: baseSize + (other.baseSize - baseSize) * t,
+      scaleRatio: scaleRatio + (other.scaleRatio - scaleRatio) * t,
+    );
+  }
+
+  double _pow(int exponent) {
+    return math.pow(scaleRatio, exponent).toDouble();
+  }
+
+  TextTheme get textTheme {
+    return TextTheme(
+      displayLarge: TextStyle(fontSize: baseSize * _pow(5), fontWeight: FontWeight.normal),
+      displayMedium: TextStyle(fontSize: baseSize * _pow(4), fontWeight: FontWeight.normal),
+      displaySmall: TextStyle(fontSize: baseSize * _pow(3), fontWeight: FontWeight.normal),
+      headlineLarge: TextStyle(fontSize: baseSize * _pow(3), fontWeight: FontWeight.bold),
+      headlineMedium: TextStyle(fontSize: baseSize * _pow(2), fontWeight: FontWeight.bold),
+      headlineSmall: TextStyle(fontSize: baseSize * _pow(1), fontWeight: FontWeight.bold),
+      titleLarge: TextStyle(fontSize: baseSize * _pow(1), fontWeight: FontWeight.w600),
+      titleMedium: TextStyle(fontSize: baseSize, fontWeight: FontWeight.w600),
+      titleSmall: TextStyle(fontSize: baseSize * _pow(-1), fontWeight: FontWeight.w600),
+      bodyLarge: TextStyle(fontSize: baseSize * _pow(1)),
+      bodyMedium: TextStyle(fontSize: baseSize),
+      bodySmall: TextStyle(fontSize: baseSize * _pow(-1)),
+      labelLarge: TextStyle(fontSize: baseSize * 0.9, fontWeight: FontWeight.w500),
+      labelMedium: TextStyle(fontSize: baseSize * 0.8, fontWeight: FontWeight.w500),
+      labelSmall: TextStyle(fontSize: baseSize * 0.7, fontWeight: FontWeight.w500),
+    );
+  }
+
+  // ライブエディタからのエクスポート値
+  static const defaultTypography = AppTypography(
+    baseSize: $baseSize,
+    scaleRatio: $scaleRatio,
+  );
+}
+
+extension AppTypographyExtension on BuildContext {
+  AppTypography get appTypography => Theme.of(this).extension<AppTypography>() ?? AppTypography.defaultTypography;
+}
+''';
+  }
+
   void _exportAndSaveCode(BuildContext context, ThemeControllerProvider themeController) {
     final colorsCode = _generateAppColorsCode(themeController.primaryColor);
     final spacingCode = _generateAppSpacingCode(themeController.spacingBase);
+    final typographyCode = _generateAppTypographyCode(themeController.baseFontSize, themeController.scaleRatio);
 
     if (kIsWeb) {
       // Webブラウザの場合はローカルファイルへの書き込み権限がないため、クリップボードへ保存
-      final fullCode = '/* lib/core/design_system/app_colors.dart */\\n\\n\$colorsCode\\n\\n/* lib/core/design_system/app_spacing.dart */\\n\\n\$spacingCode';
+      final fullCode = '/* lib/core/design_system/app_colors.dart */\\n\\n\$colorsCode\\n\\n/* lib/core/design_system/app_spacing.dart */\\n\\n\$spacingCode\\n\\n/* lib/core/design_system/app_typography.dart */\\n\\n\$typographyCode';
       Clipboard.setData(ClipboardData(text: fullCode));
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('✨ Code copied to clipboard (Web Mode)')),
@@ -238,7 +311,7 @@ extension AppSpacingExtension on BuildContext {
     } else {
       // macOSなどのネイティブ環境ではプロジェクトファイルを直接上書きする
       try {
-        saveFilesToDisk(colorsCode: colorsCode, spacingCode: spacingCode);
+        saveFilesToDisk(colorsCode: colorsCode, spacingCode: spacingCode, typographyCode: typographyCode);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('🔥 Source files updated directly! (Native Mode)')),
         );
@@ -368,6 +441,52 @@ extension AppSpacingExtension on BuildContext {
                 themeController.updateTheme(spacing: val);
               },
             ),
+            const SizedBox(height: 32),
+            const Divider(),
+            
+            // --- Typography ---
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+              child: Text('Typography', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Text(
+                'Base Size (Body): ${themeController.baseFontSize.toStringAsFixed(1)}px\n'
+                'Scale Ratio: ${themeController.scaleRatio.toStringAsFixed(3)}x',
+                style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.4),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.0),
+              child: Text('Base Font Size:', style: TextStyle(fontSize: 12, color: Colors.black54)),
+            ),
+            Slider(
+              value: themeController.baseFontSize,
+              min: 12.0,
+              max: 24.0,
+              divisions: 12,
+              label: '${themeController.baseFontSize.toStringAsFixed(1)} px',
+              onChanged: (val) {
+                themeController.updateTheme(fontSize: val);
+              },
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.0),
+              child: Text('Scale Ratio:', style: TextStyle(fontSize: 12, color: Colors.black54)),
+            ),
+            Slider(
+              value: themeController.scaleRatio,
+              min: 1.0,
+              max: 1.618,
+              divisions: 62, // roughly 0.01 increments
+              label: '${themeController.scaleRatio.toStringAsFixed(3)}x',
+              onChanged: (val) {
+                themeController.updateTheme(ratio: val);
+              },
+            ),
+
             const SizedBox(height: 32),
             const Divider(),
             Padding(
