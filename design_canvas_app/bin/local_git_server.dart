@@ -70,6 +70,41 @@ Future<void> main() async {
       } finally {
         await request.response.close();
       }
+    } else if (request.method == 'POST' && request.uri.path == '/open-ide') {
+      try {
+        final content = await utf8.decoder.bind(request).join();
+        final data = jsonDecode(content) as Map<String, dynamic>;
+        final filePath = data['filePath'] as String?;
+
+        if (filePath == null || filePath.isEmpty) {
+          request.response.statusCode = HttpStatus.badRequest;
+          request.response.write(jsonEncode({'error': 'filePath cannot be empty'}));
+          await request.response.close();
+          continue;
+        }
+
+        print('💻 Opening IDE for: $filePath');
+        
+        // Try cursor first, then fallback to code
+        var result = await Process.run('cursor', ['-g', filePath], runInShell: true);
+        if (result.exitCode != 0) {
+          print('Cursor not found, falling back to VS Code...');
+          result = await Process.run('code', ['-g', filePath], runInShell: true);
+        }
+        
+        if (result.exitCode != 0) {
+          throw Exception('Failed to open IDE: ${result.stderr}');
+        }
+
+        request.response.statusCode = HttpStatus.ok;
+        request.response.write(jsonEncode({'status': 'success'}));
+      } catch (e) {
+        print('❌ Error opening IDE: $e');
+        request.response.statusCode = HttpStatus.internalServerError;
+        request.response.write(jsonEncode({'error': e.toString()}));
+      } finally {
+        await request.response.close();
+      }
     } else {
       request.response.statusCode = HttpStatus.notFound;
       request.response.write(jsonEncode({'error': 'Not Found'}));

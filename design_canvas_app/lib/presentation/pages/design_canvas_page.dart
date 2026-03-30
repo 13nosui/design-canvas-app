@@ -711,20 +711,54 @@ extension AppTypographyExtension on BuildContext {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
         if (route != null) ...[
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              '🏷️ ${route.path} (${route.name ?? route.path})',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.surface,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '🏷️ ${route.path} (${route.name ?? route.path})',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.surface,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
               ),
-            ),
+              if (route.filePath != null) ...[
+                const SizedBox(width: 8),
+                Tooltip(
+                  message: 'Open in IDE',
+                  child: IconButton(
+                    icon: const Text('💻', style: TextStyle(fontSize: 16)),
+                    onPressed: () async {
+                      try {
+                        await http.post(
+                          Uri.parse('http://localhost:8080/open-ide'),
+                          headers: {'Content-Type': 'application/json'},
+                          body: jsonEncode({'filePath': route.filePath}),
+                        );
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('❌ IDEを開けません: $e')),
+                          );
+                        }
+                      }
+                    },
+                    style: IconButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+                      minimumSize: const Size(40, 40),
+                      padding: EdgeInsets.zero,
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
           const SizedBox(height: 16),
         ],
