@@ -1,0 +1,35 @@
+name: Visual Regression Test
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+
+jobs:
+  vrt:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run Golden Tests
+        id: test
+        run: flutter test test/vrt_test.dart
+
+      - name: Upload Golden Test Failures
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-test-failures
+          path: test/failures/
+          retention-days: 7

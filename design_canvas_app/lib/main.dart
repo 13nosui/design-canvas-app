@@ -16,7 +16,8 @@ void main() {
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+  final String? initialFontFamily;
+  const MyApp({super.key, this.initialFontFamily});
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -24,8 +25,14 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   ThemeMode _themeMode = ThemeMode.light;
-  String _fontFamily = 'Noto Sans JP';
+  late String _fontFamily;
   Color _primaryColor = Colors.deepPurple;
+
+  @override
+  void initState() {
+    super.initState();
+    _fontFamily = widget.initialFontFamily ?? 'Noto Sans JP';
+  }
   double _spacingBase = 8.0;
   double _baseFontSize = 16.0;
   double _scaleRatio = 1.25;

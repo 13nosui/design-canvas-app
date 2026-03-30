@@ -714,18 +714,21 @@ extension AppTypographyExtension on BuildContext {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '🏷️ ${route.path} (${route.name ?? route.path})',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.surface,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '🏷️ ${route.path} (${route.name ?? route.path})',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.surface,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               ),
@@ -1226,13 +1229,15 @@ extension AppTypographyExtension on BuildContext {
                   border: OutlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
-                items: const [
-                  DropdownMenuItem(value: 'Noto Sans JP', child: Text('Noto Sans JP (Default)')),
-                  DropdownMenuItem(value: 'Roboto', child: Text('Roboto')),
-                  DropdownMenuItem(value: 'Montserrat', child: Text('Montserrat')),
-                  DropdownMenuItem(value: 'Playfair Display', child: Text('Playfair Display')),
-                  DropdownMenuItem(value: 'Lora', child: Text('Lora')),
-                  DropdownMenuItem(value: 'Oswald', child: Text('Oswald')),
+                items: [
+                  if (themeController.fontFamily == 'Ahem')
+                    const DropdownMenuItem(value: 'Ahem', child: Text('Ahem (Test)')),
+                  const DropdownMenuItem(value: 'Noto Sans JP', child: Text('Noto Sans JP (Default)')),
+                  const DropdownMenuItem(value: 'Roboto', child: Text('Roboto')),
+                  const DropdownMenuItem(value: 'Montserrat', child: Text('Montserrat')),
+                  const DropdownMenuItem(value: 'Playfair Display', child: Text('Playfair Display')),
+                  const DropdownMenuItem(value: 'Lora', child: Text('Lora')),
+                  const DropdownMenuItem(value: 'Oswald', child: Text('Oswald')),
                 ],
                 onChanged: (val) {
                   if (val != null) {
