@@ -39,6 +39,7 @@ class _MyAppState extends State<MyApp> {
   double _blur = 0.0;
   bool _useGradient = false;
   bool _isLintMode = false;
+  MockUIState _currentMockState = MockUIState.normal;
   Color _gradientStartColor = AppColors.lightColors.primary;
   Color _gradientEndColor = const Color(0xFF3700B3);
 
@@ -59,6 +60,7 @@ class _MyAppState extends State<MyApp> {
     double? blur,
     bool? useGradient,
     bool? isLintMode,
+    MockUIState? mockState,
     Color? gradientStartColor,
     Color? gradientEndColor,
   }) {
@@ -79,6 +81,7 @@ class _MyAppState extends State<MyApp> {
       if (blur != null) _blur = blur;
       if (useGradient != null) _useGradient = useGradient;
       if (isLintMode != null) _isLintMode = isLintMode;
+      if (mockState != null) _currentMockState = mockState;
       if (gradientStartColor != null) _gradientStartColor = gradientStartColor;
       if (gradientEndColor != null) _gradientEndColor = gradientEndColor;
     });
@@ -167,6 +170,7 @@ class _MyAppState extends State<MyApp> {
       blur: _blur,
       useGradient: _useGradient,
       isLintMode: _isLintMode,
+      currentMockState: _currentMockState,
       gradientStartColor: _gradientStartColor,
       gradientEndColor: _gradientEndColor,
       updateTheme: _updateTheme,

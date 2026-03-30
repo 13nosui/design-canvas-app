@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+enum MockUIState { normal, loading, empty, error }
+
 class ThemeControllerProvider extends InheritedWidget {
   final ThemeMode themeMode;
   final String fontFamily;
@@ -17,6 +19,7 @@ class ThemeControllerProvider extends InheritedWidget {
   final double blur;
   final bool useGradient;
   final bool isLintMode;
+  final MockUIState currentMockState;
   final Color gradientStartColor;
   final Color gradientEndColor;
   final void Function({
@@ -36,6 +39,7 @@ class ThemeControllerProvider extends InheritedWidget {
     double? blur,
     bool? useGradient,
     bool? isLintMode,
+    MockUIState? mockState,
     Color? gradientStartColor,
     Color? gradientEndColor,
   }) updateTheme;
@@ -58,6 +62,7 @@ class ThemeControllerProvider extends InheritedWidget {
     required this.blur,
     required this.useGradient,
     required this.isLintMode,
+    required this.currentMockState,
     required this.gradientStartColor,
     required this.gradientEndColor,
     required this.updateTheme,
@@ -86,6 +91,7 @@ class ThemeControllerProvider extends InheritedWidget {
            blur != oldWidget.blur ||
            useGradient != oldWidget.useGradient ||
            isLintMode != oldWidget.isLintMode ||
+           currentMockState != oldWidget.currentMockState ||
            gradientStartColor != oldWidget.gradientStartColor ||
            gradientEndColor != oldWidget.gradientEndColor;
   }

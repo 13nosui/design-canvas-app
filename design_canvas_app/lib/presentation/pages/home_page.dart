@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/navigation/canvas_link.dart';
+import '../../core/design_system/theme_controller.dart';
 import '../../core/design_system/linter_wrapper.dart';
 import '../../widgets/my_custom_button.dart';
 
@@ -9,13 +10,35 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Home'),
-        elevation: 1,
-      ),
-      body: Center(
-        child: SingleChildScrollView(
+    final mockState = ThemeControllerProvider.of(context).currentMockState;
+
+    Widget content;
+    switch (mockState) {
+      case MockUIState.loading:
+        content = const CircularProgressIndicator();
+        break;
+      case MockUIState.empty:
+        content = const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.inbox, size: 60, color: Colors.grey),
+            SizedBox(height: 16),
+            Text('データがありません', style: TextStyle(color: Colors.grey, fontSize: 16)),
+          ],
+        );
+        break;
+      case MockUIState.error:
+        content = const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.warning_amber_rounded, size: 60, color: Colors.red),
+            SizedBox(height: 16),
+            Text('エラーが発生しました', style: TextStyle(color: Colors.red, fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        );
+        break;
+      case MockUIState.normal:
+        content = SingleChildScrollView(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -56,7 +79,17 @@ class HomePage extends StatelessWidget {
               ),
             ],
           ),
-        ),
+        );
+        break;
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Home'),
+        elevation: 1,
+      ),
+      body: Center(
+        child: content,
       ),
     );
   }

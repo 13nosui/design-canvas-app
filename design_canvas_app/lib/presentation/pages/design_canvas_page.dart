@@ -851,6 +851,31 @@ extension AppTypographyExtension on BuildContext {
                 ],
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text('🎭 UI State', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  const SizedBox(height: 8),
+                  SegmentedButton<MockUIState>(
+                    segments: const [
+                      ButtonSegment(value: MockUIState.normal, label: Text('Normal', style: TextStyle(fontSize: 11))),
+                      ButtonSegment(value: MockUIState.loading, label: Text('Loading', style: TextStyle(fontSize: 11))),
+                      ButtonSegment(value: MockUIState.empty, label: Text('Empty', style: TextStyle(fontSize: 11))),
+                      ButtonSegment(value: MockUIState.error, label: Text('Error', style: TextStyle(fontSize: 11))),
+                    ],
+                    selected: {themeController.currentMockState},
+                    onSelectionChanged: (Set<MockUIState> newSelection) {
+                      themeController.updateTheme(mockState: newSelection.first);
+                    },
+                    style: const ButtonStyle(
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const Divider(),
             
             // --- Color Picker ---
