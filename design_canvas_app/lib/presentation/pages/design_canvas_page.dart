@@ -7,7 +7,7 @@ import 'package:flutter/services.dart';
 import '../../core/design_system/app_colors.dart';
 import '../../core/design_system/device_specs.dart';
 import '../../core/design_system/theme_controller.dart';
-import '../../core/navigation/sitemap.g.dart';
+import '../../app/router.dart';
 import '../../core/utils/file_exporter_stub.dart' if (dart.library.io) '../../core/utils/file_exporter_io.dart';
 
 enum PreviewMode {
@@ -82,11 +82,24 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
     super.dispose();
   }
 
+  Map<String, AppRouteDef> _getFlatRoutes(List<AppRouteDef> routes) {
+    final Map<String, AppRouteDef> map = {};
+    for (var route in routes) {
+      final key = route.name ?? route.path;
+      map[key] = route;
+      if (route.children.isNotEmpty) {
+        map.addAll(_getFlatRoutes(route.children));
+      }
+    }
+    return map;
+  }
+
   Map<String, Offset> _calculatePositions() {
     final positions = <String, Offset>{};
     double currentX = 100.0;
     
-    for (final key in generatedRoutes.keys) {
+    final flatRoutes = _getFlatRoutes(canvasRoutes);
+    for (final key in flatRoutes.keys) {
       positions[key] = Offset(currentX, 200.0);
       currentX += screenWidth + xSpacing;
     }
@@ -677,7 +690,7 @@ extension AppTypographyExtension on BuildContext {
     }
   }
 
-  Widget _buildDevicePreview(DeviceSpec device, CanvasRoute? route, Widget content) {
+  Widget _buildDevicePreview(DeviceSpec device, AppRouteDef? route, Widget content) {
     return SingleChildScrollView(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -691,7 +704,7 @@ extension AppTypographyExtension on BuildContext {
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              '🏷️ ${route.path} (${route.name})',
+              '🏷️ ${route.path} (${route.name ?? route.path})',
               style: TextStyle(
                 color: Theme.of(context).colorScheme.surface,
                 fontWeight: FontWeight.bold,
@@ -1353,8 +1366,9 @@ extension AppTypographyExtension on BuildContext {
                 child: Builder(
                   builder: (context) {
                     final sitemapDefinition = <String, List<String>>{};
-                    for (final r in generatedRoutes.values) {
-                      sitemapDefinition[r.name] = r.childrenNames;
+                    final flatRoutes = _getFlatRoutes(canvasRoutes);
+                    for (final r in flatRoutes.values) {
+                      sitemapDefinition[r.name ?? r.path] = r.children.map((c) => c.name ?? c.path).toList();
                     }
                     return CustomPaint(
                       painter: SitemapPainter(
@@ -1395,8 +1409,9 @@ extension AppTypographyExtension on BuildContext {
                             children: AppDevices.values.asMap().entries.map((devEntry) {
                               final idx = devEntry.key;
                               final dev = devEntry.value;
-                              final route = generatedRoutes[entry.key];
-                              final content = route?.builder.call(context) ?? const Center(child: Text('Not Found'));
+                              final flatRoutes = _getFlatRoutes(canvasRoutes);
+                              final route = flatRoutes[entry.key];
+                              final content = route?.builder(context) ?? const Center(child: Text('Not Found'));
                               
                               return Padding(
                                 padding: EdgeInsets.only(
@@ -1407,8 +1422,9 @@ extension AppTypographyExtension on BuildContext {
                             }).toList(),
                           )
                         : (() {
-                            final route = generatedRoutes[entry.key];
-                            final content = route?.builder.call(context) ?? const Center(child: Text('Not Found'));
+                            final flatRoutes = _getFlatRoutes(canvasRoutes);
+                            final route = flatRoutes[entry.key];
+                            final content = route?.builder(context) ?? const Center(child: Text('Not Found'));
                             return _buildDevicePreview(
                               _singleDevice!,
                               route,
