@@ -428,6 +428,47 @@ extension AppOpacityExtension on BuildContext {
 ''';
   }
 
+  String _generateAppBlurCode(double blur) {
+    final b = blur.toStringAsFixed(1);
+    
+    return '''import 'package:flutter/material.dart';
+
+class AppBlur extends ThemeExtension<AppBlur> {
+  final double blur;
+
+  const AppBlur({
+    required this.blur,
+  });
+
+  @override
+  AppBlur copyWith({double? blur}) {
+    return AppBlur(
+      blur: blur ?? this.blur,
+    );
+  }
+
+  @override
+  AppBlur lerp(ThemeExtension<AppBlur>? other, double t) {
+    if (other is! AppBlur) {
+      return this;
+    }
+    return AppBlur(
+      blur: blur + (other.blur - blur) * t,
+    );
+  }
+
+  // ライブエディタからのエクスポート値
+  static const defaultBlur = AppBlur(
+    blur: $b,
+  );
+}
+
+extension AppBlurExtension on BuildContext {
+  AppBlur get appBlur => Theme.of(this).extension<AppBlur>() ?? AppBlur.defaultBlur;
+}
+''';
+  }
+
   String _generateAppTypographyCode(String fontFamily, double baseSize, double scaleRatio, int fontWeight, double letterSpacing) {
     return '''import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -544,6 +585,7 @@ extension AppTypographyExtension on BuildContext {
     final elevationsCode = _generateAppElevationsCode(themeController.elevation);
     final bordersCode = _generateAppBordersCode(themeController.borderWidth, themeController.borderColor);
     final opacityCode = _generateAppOpacityCode(themeController.opacity);
+    final blurCode = _generateAppBlurCode(themeController.blur);
     final typographyCode = _generateAppTypographyCode(
       themeController.fontFamily,
       themeController.baseFontSize,
@@ -554,7 +596,7 @@ extension AppTypographyExtension on BuildContext {
 
     if (kIsWeb) {
       // Webブラウザの場合はローカルファイルへの書き込み権限がないため、クリップボードへ保存
-      final fullCode = '/* lib/core/design_system/app_colors.dart */\\n\\n\$colorsCode\\n\\n/* lib/core/design_system/app_spacing.dart */\\n\\n\$spacingCode\\n\\n/* lib/core/design_system/app_shapes.dart */\\n\\n\$shapesCode\\n\\n/* lib/core/design_system/app_elevations.dart */\\n\\n\$elevationsCode\\n\\n/* lib/core/design_system/app_borders.dart */\\n\\n\$bordersCode\\n\\n/* lib/core/design_system/app_opacity.dart */\\n\\n\$opacityCode\\n\\n/* lib/core/design_system/app_typography.dart */\\n\\n\$typographyCode';
+      final fullCode = '/* lib/core/design_system/app_colors.dart */\\n\\n\$colorsCode\\n\\n/* lib/core/design_system/app_spacing.dart */\\n\\n\$spacingCode\\n\\n/* lib/core/design_system/app_shapes.dart */\\n\\n\$shapesCode\\n\\n/* lib/core/design_system/app_elevations.dart */\\n\\n\$elevationsCode\\n\\n/* lib/core/design_system/app_borders.dart */\\n\\n\$bordersCode\\n\\n/* lib/core/design_system/app_opacity.dart */\\n\\n\$opacityCode\\n\\n/* lib/core/design_system/app_blur.dart */\\n\\n\$blurCode\\n\\n/* lib/core/design_system/app_typography.dart */\\n\\n\$typographyCode';
       Clipboard.setData(ClipboardData(text: fullCode));
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('✨ Code copied to clipboard (Web Mode)')),
@@ -562,7 +604,7 @@ extension AppTypographyExtension on BuildContext {
     } else {
       // macOSなどのネイティブ環境ではプロジェクトファイルを直接上書きする
       try {
-        saveFilesToDisk(colorsCode: colorsCode, spacingCode: spacingCode, typographyCode: typographyCode, shapesCode: shapesCode, elevationsCode: elevationsCode, bordersCode: bordersCode, opacityCode: opacityCode);
+        saveFilesToDisk(colorsCode: colorsCode, spacingCode: spacingCode, typographyCode: typographyCode, shapesCode: shapesCode, elevationsCode: elevationsCode, bordersCode: bordersCode, opacityCode: opacityCode, blurCode: blurCode);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('🔥 Source files updated directly! (Native Mode)')),
         );
@@ -829,6 +871,32 @@ extension AppTypographyExtension on BuildContext {
               label: '${(themeController.opacity * 100).toStringAsFixed(0)} %',
               onChanged: (val) {
                 themeController.updateTheme(opacity: val);
+              },
+            ),
+            const SizedBox(height: 32),
+            const Divider(),
+
+            // --- Backdrop Blur ---
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+              child: Text('Backdrop Blur', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Text(
+                'Current Blur: ${themeController.blur.toStringAsFixed(1)}px',
+                style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.87), height: 1.4),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Slider(
+              value: themeController.blur,
+              min: 0.0,
+              max: 20.0,
+              divisions: 40,
+              label: '${themeController.blur.toStringAsFixed(1)} px',
+              onChanged: (val) {
+                themeController.updateTheme(blur: val);
               },
             ),
             const SizedBox(height: 32),

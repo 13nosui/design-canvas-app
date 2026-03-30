@@ -1,6 +1,6 @@
 import 'dart:io';
 
-void saveFilesToDisk({required String colorsCode, required String spacingCode, required String typographyCode, required String shapesCode, required String elevationsCode, required String bordersCode, required String opacityCode}) {
+void saveFilesToDisk({required String colorsCode, required String spacingCode, required String typographyCode, required String shapesCode, required String elevationsCode, required String bordersCode, required String opacityCode, required String blurCode}) {
   final colorFile = File('lib/core/design_system/app_colors.dart');
   final spacingFile = File('lib/core/design_system/app_spacing.dart');
   final typographyFile = File('lib/core/design_system/app_typography.dart');
@@ -8,6 +8,7 @@ void saveFilesToDisk({required String colorsCode, required String spacingCode, r
   final elevationsFile = File('lib/core/design_system/app_elevations.dart');
   final bordersFile = File('lib/core/design_system/app_borders.dart');
   final opacityFile = File('lib/core/design_system/app_opacity.dart');
+  final blurFile = File('lib/core/design_system/app_blur.dart');
 
   if (colorFile.existsSync() && spacingFile.existsSync()) {
     colorFile.writeAsStringSync(colorsCode);
@@ -37,6 +38,11 @@ void saveFilesToDisk({required String colorsCode, required String spacingCode, r
       opacityFile.createSync(recursive: true);
     }
     opacityFile.writeAsStringSync(opacityCode);
+
+    if (!blurFile.existsSync()) {
+      blurFile.createSync(recursive: true);
+    }
+    blurFile.writeAsStringSync(blurCode);
   } else {
     throw Exception('Files not found. Ensure you are running from the project root.');
   }

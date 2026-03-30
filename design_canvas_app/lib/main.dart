@@ -6,6 +6,7 @@ import 'core/design_system/app_shapes.dart';
 import 'core/design_system/app_elevations.dart';
 import 'core/design_system/app_borders.dart';
 import 'core/design_system/app_opacity.dart';
+import 'core/design_system/app_blur.dart';
 import 'core/design_system/theme_controller.dart';
 import 'presentation/pages/design_canvas_page.dart';
 
@@ -34,6 +35,7 @@ class _MyAppState extends State<MyApp> {
   double _borderWidth = 0.0;
   Color _borderColor = AppColors.lightColors.primary;
   double _opacity = 1.0;
+  double _blur = 0.0;
 
   void _updateTheme({
     ThemeMode? mode,
@@ -49,6 +51,7 @@ class _MyAppState extends State<MyApp> {
     double? borderWidth,
     Color? borderColor,
     double? opacity,
+    double? blur,
   }) {
     setState(() {
       if (mode != null) _themeMode = mode;
@@ -64,6 +67,7 @@ class _MyAppState extends State<MyApp> {
       if (borderWidth != null) _borderWidth = borderWidth;
       if (borderColor != null) _borderColor = borderColor;
       if (opacity != null) _opacity = opacity;
+      if (blur != null) _blur = blur;
     });
   }
 
@@ -112,6 +116,7 @@ class _MyAppState extends State<MyApp> {
           borderColor: _borderColor,
         ),
         AppOpacity(opacity: _opacity),
+        AppBlur(blur: _blur),
         typo,
       ],
     );
@@ -141,6 +146,7 @@ class _MyAppState extends State<MyApp> {
       borderWidth: _borderWidth,
       borderColor: _borderColor,
       opacity: _opacity,
+      blur: _blur,
       updateTheme: _updateTheme,
       child: MaterialApp(
         title: 'Design Canvas App',

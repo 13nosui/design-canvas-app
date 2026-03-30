@@ -1,9 +1,11 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../core/design_system/app_colors.dart';
 import '../core/design_system/app_shapes.dart';
 import '../core/design_system/app_elevations.dart';
 import '../core/design_system/app_borders.dart';
 import '../core/design_system/app_opacity.dart';
+import '../core/design_system/app_blur.dart';
 import '../core/design_system/app_spacing.dart';
 
 class MyCustomCard extends StatelessWidget {
@@ -20,14 +22,8 @@ class MyCustomCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: 250,
-      padding: EdgeInsets.all(context.appSpacing.m),
       decoration: BoxDecoration(
-        color: context.appColors.surface.withOpacity(context.appOpacity.opacity),
         borderRadius: BorderRadius.circular(context.appShapes.borderRadius),
-        border: context.appBorders.borderWidth > 0 ? Border.all(
-          color: context.appBorders.borderColor,
-          width: context.appBorders.borderWidth,
-        ) : null,
         boxShadow: context.appElevations.elevation > 0 ? [
           BoxShadow(
             color: Theme.of(context).shadowColor.withOpacity(0.08),
@@ -36,27 +32,46 @@ class MyCustomCard extends StatelessWidget {
           ),
         ] : null,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: context.appColors.primary,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(context.appShapes.borderRadius),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: context.appBlur.blur,
+            sigmaY: context.appBlur.blur,
+          ),
+          child: Container(
+            padding: EdgeInsets.all(context.appSpacing.m),
+            decoration: BoxDecoration(
+              color: context.appColors.surface.withOpacity(context.appOpacity.opacity),
+              border: context.appBorders.borderWidth > 0 ? Border.all(
+                color: context.appBorders.borderColor,
+                width: context.appBorders.borderWidth,
+              ) : null,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: context.appColors.primary,
+                  ),
+                ),
+                SizedBox(height: context.appSpacing.s),
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: context.appColors.text.withOpacity(0.87),
+                  ),
+                ),
+              ],
             ),
           ),
-          SizedBox(height: context.appSpacing.s),
-          Text(
-            description,
-            style: TextStyle(
-              fontSize: 14,
-              color: context.appColors.text.withOpacity(0.87),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
