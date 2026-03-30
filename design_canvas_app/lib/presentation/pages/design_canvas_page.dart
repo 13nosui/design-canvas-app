@@ -224,27 +224,40 @@ extension AppSpacingExtension on BuildContext {
 ''';
   }
 
-  String _generateAppTypographyCode(double baseSize, double scaleRatio) {
+  String _generateAppTypographyCode(String fontFamily, double baseSize, double scaleRatio, int fontWeight, double letterSpacing) {
     return '''import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AppTypography extends ThemeExtension<AppTypography> {
+  final String fontFamily;
   final double baseSize;
   final double scaleRatio;
+  final int fontWeight;
+  final double letterSpacing;
 
   const AppTypography({
+    required this.fontFamily,
     required this.baseSize,
     required this.scaleRatio,
+    required this.fontWeight,
+    required this.letterSpacing,
   });
 
   @override
   AppTypography copyWith({
+    String? fontFamily,
     double? baseSize,
     double? scaleRatio,
+    int? fontWeight,
+    double? letterSpacing,
   }) {
     return AppTypography(
+      fontFamily: fontFamily ?? this.fontFamily,
       baseSize: baseSize ?? this.baseSize,
       scaleRatio: scaleRatio ?? this.scaleRatio,
+      fontWeight: fontWeight ?? this.fontWeight,
+      letterSpacing: letterSpacing ?? this.letterSpacing,
     );
   }
 
@@ -254,8 +267,11 @@ class AppTypography extends ThemeExtension<AppTypography> {
       return this;
     }
     return AppTypography(
+      fontFamily: t < 0.5 ? fontFamily : other.fontFamily,
       baseSize: baseSize + (other.baseSize - baseSize) * t,
       scaleRatio: scaleRatio + (other.scaleRatio - scaleRatio) * t,
+      fontWeight: (fontWeight + (other.fontWeight - fontWeight) * t).round(),
+      letterSpacing: letterSpacing + (other.letterSpacing - letterSpacing) * t,
     );
   }
 
@@ -263,30 +279,51 @@ class AppTypography extends ThemeExtension<AppTypography> {
     return math.pow(scaleRatio, exponent).toDouble();
   }
 
+  TextStyle _applyFont(TextStyle style) {
+    final dynamicWeight = FontWeight.values.firstWhere(
+      (w) => w.value == fontWeight,
+      orElse: () => FontWeight.w400,
+    );
+
+    final modifiedStyle = style.copyWith(
+      fontWeight: dynamicWeight,
+      letterSpacing: letterSpacing,
+    );
+
+    try {
+      return GoogleFonts.getFont(fontFamily, textStyle: modifiedStyle);
+    } catch (_) {
+      return modifiedStyle.copyWith(fontFamily: fontFamily);
+    }
+  }
+
   TextTheme get textTheme {
     return TextTheme(
-      displayLarge: TextStyle(fontSize: baseSize * _pow(5), fontWeight: FontWeight.normal),
-      displayMedium: TextStyle(fontSize: baseSize * _pow(4), fontWeight: FontWeight.normal),
-      displaySmall: TextStyle(fontSize: baseSize * _pow(3), fontWeight: FontWeight.normal),
-      headlineLarge: TextStyle(fontSize: baseSize * _pow(3), fontWeight: FontWeight.bold),
-      headlineMedium: TextStyle(fontSize: baseSize * _pow(2), fontWeight: FontWeight.bold),
-      headlineSmall: TextStyle(fontSize: baseSize * _pow(1), fontWeight: FontWeight.bold),
-      titleLarge: TextStyle(fontSize: baseSize * _pow(1), fontWeight: FontWeight.w600),
-      titleMedium: TextStyle(fontSize: baseSize, fontWeight: FontWeight.w600),
-      titleSmall: TextStyle(fontSize: baseSize * _pow(-1), fontWeight: FontWeight.w600),
-      bodyLarge: TextStyle(fontSize: baseSize * _pow(1)),
-      bodyMedium: TextStyle(fontSize: baseSize),
-      bodySmall: TextStyle(fontSize: baseSize * _pow(-1)),
-      labelLarge: TextStyle(fontSize: baseSize * 0.9, fontWeight: FontWeight.w500),
-      labelMedium: TextStyle(fontSize: baseSize * 0.8, fontWeight: FontWeight.w500),
-      labelSmall: TextStyle(fontSize: baseSize * 0.7, fontWeight: FontWeight.w500),
+      displayLarge: _applyFont(TextStyle(fontSize: baseSize * _pow(5))),
+      displayMedium: _applyFont(TextStyle(fontSize: baseSize * _pow(4))),
+      displaySmall: _applyFont(TextStyle(fontSize: baseSize * _pow(3))),
+      headlineLarge: _applyFont(TextStyle(fontSize: baseSize * _pow(3))),
+      headlineMedium: _applyFont(TextStyle(fontSize: baseSize * _pow(2))),
+      headlineSmall: _applyFont(TextStyle(fontSize: baseSize * _pow(1))),
+      titleLarge: _applyFont(TextStyle(fontSize: baseSize * _pow(1))),
+      titleMedium: _applyFont(TextStyle(fontSize: baseSize)),
+      titleSmall: _applyFont(TextStyle(fontSize: baseSize * _pow(-1))),
+      bodyLarge: _applyFont(TextStyle(fontSize: baseSize * _pow(1))),
+      bodyMedium: _applyFont(TextStyle(fontSize: baseSize)),
+      bodySmall: _applyFont(TextStyle(fontSize: baseSize * _pow(-1))),
+      labelLarge: _applyFont(TextStyle(fontSize: baseSize * 0.9)),
+      labelMedium: _applyFont(TextStyle(fontSize: baseSize * 0.8)),
+      labelSmall: _applyFont(TextStyle(fontSize: baseSize * 0.7)),
     );
   }
 
   // ライブエディタからのエクスポート値
   static const defaultTypography = AppTypography(
+    fontFamily: '\$fontFamily',
     baseSize: $baseSize,
     scaleRatio: $scaleRatio,
+    fontWeight: $fontWeight,
+    letterSpacing: $letterSpacing,
   );
 }
 
@@ -299,7 +336,13 @@ extension AppTypographyExtension on BuildContext {
   void _exportAndSaveCode(BuildContext context, ThemeControllerProvider themeController) {
     final colorsCode = _generateAppColorsCode(themeController.primaryColor);
     final spacingCode = _generateAppSpacingCode(themeController.spacingBase);
-    final typographyCode = _generateAppTypographyCode(themeController.baseFontSize, themeController.scaleRatio);
+    final typographyCode = _generateAppTypographyCode(
+      themeController.fontFamily,
+      themeController.baseFontSize,
+      themeController.scaleRatio,
+      themeController.fontWeight,
+      themeController.letterSpacing,
+    );
 
     if (kIsWeb) {
       // Webブラウザの場合はローカルファイルへの書き込み権限がないため、クリップボードへ保存
@@ -451,6 +494,31 @@ extension AppTypographyExtension on BuildContext {
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: DropdownButtonFormField<String>(
+                value: themeController.fontFamily,
+                decoration: const InputDecoration(
+                  labelText: 'Google Font',
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'Noto Sans JP', child: Text('Noto Sans JP (Default)')),
+                  DropdownMenuItem(value: 'Roboto', child: Text('Roboto')),
+                  DropdownMenuItem(value: 'Montserrat', child: Text('Montserrat')),
+                  DropdownMenuItem(value: 'Playfair Display', child: Text('Playfair Display')),
+                  DropdownMenuItem(value: 'Lora', child: Text('Lora')),
+                  DropdownMenuItem(value: 'Oswald', child: Text('Oswald')),
+                ],
+                onChanged: (val) {
+                  if (val != null) {
+                    themeController.updateTheme(font: val);
+                  }
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: Text(
                 'Base Size (Body): ${themeController.baseFontSize.toStringAsFixed(1)}px\n'
                 'Scale Ratio: ${themeController.scaleRatio.toStringAsFixed(3)}x',
@@ -484,6 +552,36 @@ extension AppTypographyExtension on BuildContext {
               label: '${themeController.scaleRatio.toStringAsFixed(3)}x',
               onChanged: (val) {
                 themeController.updateTheme(ratio: val);
+              },
+            ),
+
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.0),
+              child: Text('Font Weight:', style: TextStyle(fontSize: 12, color: Colors.black54)),
+            ),
+            Slider(
+              value: themeController.fontWeight.toDouble(),
+              min: 100.0,
+              max: 900.0,
+              divisions: 8, // 100, 200, ... 900
+              label: 'w${themeController.fontWeight}',
+              onChanged: (val) {
+                themeController.updateTheme(weight: val.toInt());
+              },
+            ),
+
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.0),
+              child: Text('Letter Spacing:', style: TextStyle(fontSize: 12, color: Colors.black54)),
+            ),
+            Slider(
+              value: themeController.letterSpacing,
+              min: -2.0,
+              max: 10.0,
+              divisions: 120, // 0.1 increments
+              label: '${themeController.letterSpacing.toStringAsFixed(1)}px',
+              onChanged: (val) {
+                themeController.updateTheme(letterSpace: val);
               },
             ),
 

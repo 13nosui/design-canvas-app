@@ -17,29 +17,52 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  String _fontFamily = 'Noto Sans JP';
   Color _primaryColor = Colors.deepPurple;
   double _spacingBase = 8.0;
   double _baseFontSize = 16.0;
   double _scaleRatio = 1.25;
+  int _fontWeight = 400;
+  double _letterSpacing = 0.0;
 
-  void _updateTheme({Color? primary, double? spacing, double? fontSize, double? ratio}) {
+  void _updateTheme({
+    String? font,
+    Color? primary,
+    double? spacing,
+    double? fontSize,
+    double? ratio,
+    int? weight,
+    double? letterSpace,
+  }) {
     setState(() {
+      if (font != null) _fontFamily = font;
       if (primary != null) _primaryColor = primary;
       if (spacing != null) _spacingBase = spacing;
       if (fontSize != null) _baseFontSize = fontSize;
       if (ratio != null) _scaleRatio = ratio;
+      if (weight != null) _fontWeight = weight;
+      if (letterSpace != null) _letterSpacing = letterSpace;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final typo = AppTypography(baseSize: _baseFontSize, scaleRatio: _scaleRatio);
+    final typo = AppTypography(
+      fontFamily: _fontFamily,
+      baseSize: _baseFontSize,
+      scaleRatio: _scaleRatio,
+      fontWeight: _fontWeight,
+      letterSpacing: _letterSpacing,
+    );
 
     return ThemeControllerProvider(
+      fontFamily: _fontFamily,
       primaryColor: _primaryColor,
       spacingBase: _spacingBase,
       baseFontSize: _baseFontSize,
       scaleRatio: _scaleRatio,
+      fontWeight: _fontWeight,
+      letterSpacing: _letterSpacing,
       updateTheme: _updateTheme,
       child: MaterialApp(
         title: 'Design Canvas App',
