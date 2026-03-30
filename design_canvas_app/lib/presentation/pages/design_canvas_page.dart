@@ -128,20 +128,37 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
     _animationController.forward(from: 0.0);
   }
 
-  String _generateAppColorsCode(Color primary) {
+  String _generateAppColorsCode(ThemeControllerProvider themeController) {
+    String colorToHex(Color c) => '0xFF${c.value.toRadixString(16).padLeft(8, '0').toUpperCase()}';
+    final primary = themeController.primaryColor;
+
     return '''import 'package:flutter/material.dart';
 
 class AppColors extends ThemeExtension<AppColors> {
   final Color primary;
+  final Color background;
+  final Color surface;
+  final Color text;
 
   const AppColors({
     required this.primary,
+    required this.background,
+    required this.surface,
+    required this.text,
   });
 
   @override
-  AppColors copyWith({Color? primary}) {
+  AppColors copyWith({
+    Color? primary,
+    Color? background,
+    Color? surface,
+    Color? text,
+  }) {
     return AppColors(
       primary: primary ?? this.primary,
+      background: background ?? this.background,
+      surface: surface ?? this.surface,
+      text: text ?? this.text,
     );
   }
 
@@ -152,13 +169,27 @@ class AppColors extends ThemeExtension<AppColors> {
     }
     return AppColors(
       primary: Color.lerp(primary, other.primary, t) ?? primary,
+      background: Color.lerp(background, other.background, t) ?? background,
+      surface: Color.lerp(surface, other.surface, t) ?? surface,
+      text: Color.lerp(text, other.text, t) ?? text,
     );
   }
 
-  // ライブエディタからのエクスポート値
-  static const defaultColors = AppColors(
-    primary: Color(0x${primary.value.toRadixString(16).padLeft(8, '0')}),
+  static const lightColors = AppColors(
+    primary: Color(${colorToHex(primary)}),
+    background: Color(0xFFF8F9FA),
+    surface: Color(0xFFFFFFFF),
+    text: Color(0xFF212529),
   );
+
+  static const darkColors = AppColors(
+    primary: Color(${colorToHex(primary)}),
+    background: Color(0xFF121212),
+    surface: Color(0xFF1E1E1E),
+    text: Color(0xFFE0E0E0),
+  );
+
+  static const defaultColors = lightColors;
 }
 
 extension AppColorsExtension on BuildContext {
@@ -334,7 +365,7 @@ extension AppTypographyExtension on BuildContext {
   }
 
   void _exportAndSaveCode(BuildContext context, ThemeControllerProvider themeController) {
-    final colorsCode = _generateAppColorsCode(themeController.primaryColor);
+    final colorsCode = _generateAppColorsCode(themeController);
     final spacingCode = _generateAppSpacingCode(themeController.spacingBase);
     final typographyCode = _generateAppTypographyCode(
       themeController.fontFamily,
@@ -387,7 +418,7 @@ extension AppTypographyExtension on BuildContext {
           (device.borderRadius - device.bezelWidth).clamp(0.0, double.infinity),
         ),
         child: Container(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           child: AbsorbPointer(
             child: content,
           ),
@@ -442,7 +473,7 @@ extension AppTypographyExtension on BuildContext {
                       decoration: BoxDecoration(
                         color: color,
                         shape: BoxShape.circle,
-                        border: isSelected ? Border.all(color: Colors.black87, width: 3) : null,
+                        border: isSelected ? Border.all(color: Theme.of(context).colorScheme.onSurface, width: 3) : null,
                         boxShadow: [
                           BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 4, offset: const Offset(0, 2))
                         ],
@@ -469,7 +500,7 @@ extension AppTypographyExtension on BuildContext {
                 '• S (Small): ${themeController.spacingBase.toStringAsFixed(1)}px\n'
                 '• M (Medium): ${(themeController.spacingBase * 2).toStringAsFixed(1)}px\n'
                 '• L (Large): ${(themeController.spacingBase * 3).toStringAsFixed(1)}px',
-                style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.4),
+                style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.87), height: 1.4),
               ),
             ),
             const SizedBox(height: 16),
@@ -522,13 +553,13 @@ extension AppTypographyExtension on BuildContext {
               child: Text(
                 'Base Size (Body): ${themeController.baseFontSize.toStringAsFixed(1)}px\n'
                 'Scale Ratio: ${themeController.scaleRatio.toStringAsFixed(3)}x',
-                style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.4),
+                style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.87), height: 1.4),
               ),
             ),
             const SizedBox(height: 8),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.0),
-              child: Text('Base Font Size:', style: TextStyle(fontSize: 12, color: Colors.black54)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Text('Base Font Size:', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))),
             ),
             Slider(
               value: themeController.baseFontSize,
@@ -540,9 +571,9 @@ extension AppTypographyExtension on BuildContext {
                 themeController.updateTheme(fontSize: val);
               },
             ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.0),
-              child: Text('Scale Ratio:', style: TextStyle(fontSize: 12, color: Colors.black54)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Text('Scale Ratio:', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))),
             ),
             Slider(
               value: themeController.scaleRatio,
@@ -555,9 +586,9 @@ extension AppTypographyExtension on BuildContext {
               },
             ),
 
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.0),
-              child: Text('Font Weight:', style: TextStyle(fontSize: 12, color: Colors.black54)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Text('Font Weight:', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))),
             ),
             Slider(
               value: themeController.fontWeight.toDouble(),
@@ -570,9 +601,9 @@ extension AppTypographyExtension on BuildContext {
               },
             ),
 
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.0),
-              child: Text('Letter Spacing:', style: TextStyle(fontSize: 12, color: Colors.black54)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Text('Letter Spacing:', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))),
             ),
             Slider(
               value: themeController.letterSpacing,
@@ -617,6 +648,16 @@ extension AppTypographyExtension on BuildContext {
         title: const Text('Design Canvas'),
         elevation: 1,
         actions: [
+          Builder(builder: (context) {
+            final themeController = ThemeControllerProvider.of(context);
+            return IconButton(
+              icon: Icon(themeController.themeMode == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode),
+              tooltip: 'Toggle Dark Mode',
+              onPressed: () {
+                themeController.updateTheme(mode: themeController.themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light);
+              },
+            );
+          }),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: SegmentedButton<PreviewMode>(
@@ -663,7 +704,7 @@ extension AppTypographyExtension on BuildContext {
             children: [
               Positioned.fill(
                 child: Container(
-                  color: Colors.grey[100],
+                  color: Theme.of(context).scaffoldBackgroundColor,
                 ),
               ),
               Positioned.fill(

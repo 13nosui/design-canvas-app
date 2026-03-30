@@ -17,6 +17,7 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  ThemeMode _themeMode = ThemeMode.light;
   String _fontFamily = 'Noto Sans JP';
   Color _primaryColor = Colors.deepPurple;
   double _spacingBase = 8.0;
@@ -26,6 +27,7 @@ class _MyAppState extends State<MyApp> {
   double _letterSpacing = 0.0;
 
   void _updateTheme({
+    ThemeMode? mode,
     String? font,
     Color? primary,
     double? spacing,
@@ -35,6 +37,7 @@ class _MyAppState extends State<MyApp> {
     double? letterSpace,
   }) {
     setState(() {
+      if (mode != null) _themeMode = mode;
       if (font != null) _fontFamily = font;
       if (primary != null) _primaryColor = primary;
       if (spacing != null) _spacingBase = spacing;
@@ -43,6 +46,49 @@ class _MyAppState extends State<MyApp> {
       if (weight != null) _fontWeight = weight;
       if (letterSpace != null) _letterSpacing = letterSpace;
     });
+  }
+
+  ThemeData _buildTheme(Brightness brightness, AppTypography typo) {
+    final isDark = brightness == Brightness.dark;
+    final baseColors = isDark ? AppColors.darkColors : AppColors.lightColors;
+    final appColors = baseColors.copyWith(primary: _primaryColor);
+
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: _primaryColor,
+      brightness: brightness,
+      surface: appColors.surface,
+    );
+
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: colorScheme,
+      scaffoldBackgroundColor: appColors.background,
+      canvasColor: appColors.surface,
+      sliderTheme: SliderThemeData(
+        inactiveTrackColor: appColors.text.withOpacity(0.2),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        border: OutlineInputBorder(
+          borderSide: BorderSide(color: appColors.text.withOpacity(0.3)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: appColors.text.withOpacity(0.3)),
+        ),
+      ),
+      textTheme: typo.textTheme.apply(
+        bodyColor: appColors.text,
+        displayColor: appColors.text,
+      ),
+      extensions: <ThemeExtension<dynamic>>[
+        appColors,
+        AppSpacing(
+          s: _spacingBase,
+          m: _spacingBase * 2,
+          l: _spacingBase * 3,
+        ),
+        typo,
+      ],
+    );
   }
 
   @override
@@ -56,6 +102,7 @@ class _MyAppState extends State<MyApp> {
     );
 
     return ThemeControllerProvider(
+      themeMode: _themeMode,
       fontFamily: _fontFamily,
       primaryColor: _primaryColor,
       spacingBase: _spacingBase,
@@ -66,23 +113,9 @@ class _MyAppState extends State<MyApp> {
       updateTheme: _updateTheme,
       child: MaterialApp(
         title: 'Design Canvas App',
-        theme: ThemeData(
-          // Material 3の colorScheme の基調色としても連動させる
-          colorScheme: ColorScheme.fromSeed(seedColor: _primaryColor),
-          useMaterial3: true,
-          // タイポグラフィを一斉適用（H1からBodyまですべて更新される）
-          textTheme: typo.textTheme,
-          // 独自のThemeExtensionへ動的な値を注入
-          extensions: <ThemeExtension<dynamic>>[
-            AppColors(primary: _primaryColor),
-            AppSpacing(
-              s: _spacingBase,
-              m: _spacingBase * 2,
-              l: _spacingBase * 3, // Base値を基準に各サイズを連動計算
-            ),
-            typo,
-          ],
-        ),
+        themeMode: _themeMode,
+        theme: _buildTheme(Brightness.light, typo),
+        darkTheme: _buildTheme(Brightness.dark, typo),
         home: const DesignCanvasPage(),
       ),
     );

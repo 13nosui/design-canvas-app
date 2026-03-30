@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 class ThemeControllerProvider extends InheritedWidget {
+  final ThemeMode themeMode;
   final String fontFamily;
   final Color primaryColor;
   final double spacingBase;
@@ -9,6 +10,7 @@ class ThemeControllerProvider extends InheritedWidget {
   final int fontWeight;
   final double letterSpacing;
   final void Function({
+    ThemeMode? mode,
     String? font,
     Color? primary,
     double? spacing,
@@ -20,6 +22,7 @@ class ThemeControllerProvider extends InheritedWidget {
 
   const ThemeControllerProvider({
     super.key,
+    required this.themeMode,
     required this.fontFamily,
     required this.primaryColor,
     required this.spacingBase,
@@ -37,7 +40,8 @@ class ThemeControllerProvider extends InheritedWidget {
 
   @override
   bool updateShouldNotify(ThemeControllerProvider oldWidget) {
-    return fontFamily != oldWidget.fontFamily ||
+    return themeMode != oldWidget.themeMode ||
+           fontFamily != oldWidget.fontFamily ||
            primaryColor != oldWidget.primaryColor || 
            spacingBase != oldWidget.spacingBase ||
            baseFontSize != oldWidget.baseFontSize ||
