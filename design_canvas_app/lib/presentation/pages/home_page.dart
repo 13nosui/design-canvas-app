@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../../core/navigation/canvas_link.dart';
 import '../../widgets/my_custom_button.dart';
 
 class HomePage extends StatelessWidget {
@@ -21,9 +23,14 @@ class HomePage extends StatelessWidget {
                 style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 24),
-              MyCustomButton(
-                text: 'Check Color Updates!',
-                onPressed: () {},
+              CanvasLink(
+                target: '/profile',
+                child: MyCustomButton(
+                  text: 'Go to Profile',
+                  onPressed: () {
+                    context.go('/profile');
+                  },
+                ),
               ),
             ],
           ),

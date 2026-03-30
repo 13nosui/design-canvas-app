@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import '../../core/design_system/app_colors.dart';
 import '../../core/design_system/device_specs.dart';
 import '../../core/design_system/theme_controller.dart';
+import '../../core/navigation/canvas_link.dart';
 import '../../app/router.dart';
 import '../../core/utils/file_exporter_stub.dart' if (dart.library.io) '../../core/utils/file_exporter_io.dart';
 
@@ -27,6 +28,10 @@ class DesignCanvasPage extends StatefulWidget {
 class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerProviderStateMixin {
   PreviewMode _previewMode = PreviewMode.free;
   bool _showBackgroundDecor = true;
+  bool _showConnectors = true;
+
+  final CanvasLinkRegistry _linkRegistry = CanvasLinkRegistry();
+  final GlobalKey _canvasKey = GlobalKey();
 
   final double deviceSpacing = 64.0;
 
@@ -64,6 +69,7 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
   @override
   void initState() {
     super.initState();
+    _linkRegistry.addListener(_onLinksChanged);
     _transformationController = TransformationController();
     _animationController = AnimationController(
       vsync: this,
@@ -75,8 +81,14 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
       });
   }
 
+  void _onLinksChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    _linkRegistry.removeListener(_onLinksChanged);
+    _linkRegistry.dispose();
     _transformationController.dispose();
     _animationController.dispose();
     super.dispose();
@@ -1323,8 +1335,12 @@ extension AppTypographyExtension on BuildContext {
         child: SizedBox(
           width: 8000,
           height: 3000,
-          child: Stack(
-            children: [
+          child: InheritedRegistry(
+            registry: _linkRegistry,
+            canvasKey: _canvasKey,
+            child: Stack(
+              key: _canvasKey,
+              children: [
               Positioned.fill(
                 child: Container(
                   color: Theme.of(context).scaffoldBackgroundColor,
@@ -1362,26 +1378,39 @@ extension AppTypographyExtension on BuildContext {
                     ],
                   ),
                 ),
-              Positioned.fill(
-                child: Builder(
-                  builder: (context) {
-                    final sitemapDefinition = <String, List<String>>{};
-                    final flatRoutes = _getFlatRoutes(canvasRoutes);
-                    for (final r in flatRoutes.values) {
-                      sitemapDefinition[r.name ?? r.path] = r.children.map((c) => c.name ?? c.path).toList();
+              if (_showConnectors)
+                Positioned.fill(
+                  child: Builder(
+                    builder: (context) {
+                      final sitemapDefinition = <String, List<String>>{};
+                      final flatRoutes = _getFlatRoutes(canvasRoutes);
+                      for (final r in flatRoutes.values) {
+                        final targets = <String>[];
+                        targets.addAll(r.children.map((c) => c.name ?? c.path));
+                        // linksToの中に含まれるpathやnameを探索して正しいキー(name ?? path)を取得する
+                        for (final link in r.linksTo) {
+                          final match = flatRoutes.values.where((def) => def.path == link || def.name == link).firstOrNull;
+                          if (match != null) {
+                            targets.add(match.name ?? match.path);
+                          } else {
+                            targets.add(link);
+                          }
+                        }
+                        sitemapDefinition[r.name ?? r.path] = targets;
+                      }
+                      return CustomPaint(
+                        painter: SitemapPainter(
+                          sitemap: sitemapDefinition,
+                          positions: positions,
+                          dynamicLinks: _linkRegistry.links,
+                          screenWidth: screenWidth,
+                          screenHeight: screenHeight,
+                          lineColor: context.appColors.primary,
+                        ),
+                      );
                     }
-                    return CustomPaint(
-                      painter: SitemapPainter(
-                        sitemap: sitemapDefinition,
-                        positions: positions,
-                        screenWidth: screenWidth,
-                        screenHeight: screenHeight,
-                        lineColor: context.appColors.primary,
-                      ),
-                    );
-                  }
+                  ),
                 ),
-              ),
               for (final entry in positions.entries)
                 Positioned(
                   left: entry.value.dx,
@@ -1411,7 +1440,10 @@ extension AppTypographyExtension on BuildContext {
                               final dev = devEntry.value;
                               final flatRoutes = _getFlatRoutes(canvasRoutes);
                               final route = flatRoutes[entry.key];
-                              final content = route?.builder(context) ?? const Center(child: Text('Not Found'));
+                              final content = CurrentRouteProvider(
+                                routePath: route?.name ?? route?.path ?? '',
+                                child: route?.builder(context) ?? const Center(child: Text('Not Found')),
+                              );
                               
                               return Padding(
                                 padding: EdgeInsets.only(
@@ -1424,7 +1456,10 @@ extension AppTypographyExtension on BuildContext {
                         : (() {
                             final flatRoutes = _getFlatRoutes(canvasRoutes);
                             final route = flatRoutes[entry.key];
-                            final content = route?.builder(context) ?? const Center(child: Text('Not Found'));
+                            final content = CurrentRouteProvider(
+                              routePath: route?.name ?? route?.path ?? '',
+                              child: route?.builder(context) ?? const Center(child: Text('Not Found')),
+                            );
                             return _buildDevicePreview(
                               _singleDevice!,
                               route,
@@ -1435,6 +1470,7 @@ extension AppTypographyExtension on BuildContext {
                 ),
             ],
           ),
+         ),
         ),
       ),
     );
@@ -1444,6 +1480,7 @@ extension AppTypographyExtension on BuildContext {
 class SitemapPainter extends CustomPainter {
   final Map<String, List<String>> sitemap;
   final Map<String, Offset> positions;
+  final Map<String, CanvasLinkData> dynamicLinks;
   final double screenWidth;
   final double screenHeight;
   final Color lineColor;
@@ -1451,6 +1488,7 @@ class SitemapPainter extends CustomPainter {
   SitemapPainter({
     required this.sitemap,
     required this.positions,
+    required this.dynamicLinks,
     required this.screenWidth,
     required this.screenHeight,
     required this.lineColor,
@@ -1467,6 +1505,36 @@ class SitemapPainter extends CustomPainter {
       ..color = lineColor
       ..style = PaintingStyle.fill;
 
+    void drawArrow(Offset start, Offset end, bool fromRight) {
+      final path = Path();
+      if (fromRight) {
+        path.moveTo(start.dx, start.dy);
+        path.cubicTo(
+          start.dx + 50, start.dy,
+          end.dx - 50, end.dy,
+          end.dx, end.dy,
+        );
+      } else {
+        path.moveTo(start.dx, start.dy);
+        path.cubicTo(
+          start.dx - 50, start.dy,
+          end.dx - 50, end.dy,
+          end.dx, end.dy,
+        );
+      }
+
+      canvas.drawPath(path, paint);
+      
+      // Arrowhead
+      final headPath = Path()
+        ..moveTo(end.dx - 12, end.dy - 6)
+        ..lineTo(end.dx, end.dy)
+        ..lineTo(end.dx - 12, end.dy + 6)
+        ..close();
+      canvas.drawPath(headPath, arrowPaint);
+    }
+
+    // Draw static hierarchy & link lines
     for (final fromNode in sitemap.keys) {
       final fromPos = positions[fromNode];
       if (fromPos == null) continue;
@@ -1478,18 +1546,21 @@ class SitemapPainter extends CustomPainter {
         if (toPos == null) continue;
 
         final endPoint = Offset(toPos.dx, toPos.dy + screenHeight / 2);
-
-        final path = Path()
-          ..moveTo(startPoint.dx, startPoint.dy)
-          ..cubicTo(
-            startPoint.dx + 50, startPoint.dy,
-            endPoint.dx - 50, endPoint.dy,
-            endPoint.dx, endPoint.dy,
-          );
-
-        canvas.drawPath(path, paint);
-        canvas.drawCircle(endPoint, 6.0, arrowPaint);
+        drawArrow(startPoint, endPoint, true);
       }
+    }
+
+    // Draw dynamic CanvasLink lines
+    for (final link in dynamicLinks.values) {
+      final toPos = positions[link.targetRoute];
+      if (toPos == null) continue;
+
+      final startPoint = link.sourceCenter;
+      final endPoint = Offset(toPos.dx, toPos.dy + screenHeight / 2);
+      // Whether it is coming from right or left
+      final fromRight = startPoint.dx < endPoint.dx;
+      
+      drawArrow(startPoint, endPoint, fromRight);
     }
   }
 
@@ -1498,6 +1569,7 @@ class SitemapPainter extends CustomPainter {
     return oldDelegate.screenWidth != screenWidth ||
            oldDelegate.screenHeight != screenHeight ||
            oldDelegate.sitemap != sitemap ||
+           oldDelegate.dynamicLinks != dynamicLinks ||
            oldDelegate.positions != positions ||
            oldDelegate.lineColor != lineColor;
   }
