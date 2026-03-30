@@ -60,7 +60,7 @@ class HomePage extends StatelessWidget {
               const SizedBox(height: 32),
               const Divider(),
               const SizedBox(height: 16),
-              const Text('⚠️ Visual Linter Test:', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+              const Text('⚠️ ハッハッハ。Visual Linter Test:', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               LinterWrapper(
                 isCompliant: false,
