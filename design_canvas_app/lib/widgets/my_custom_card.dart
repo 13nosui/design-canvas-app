@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/design_system/app_colors.dart';
 import '../core/design_system/app_shapes.dart';
+import '../core/design_system/app_elevations.dart';
 import '../core/design_system/app_spacing.dart';
 
 class MyCustomCard extends StatelessWidget {
@@ -25,13 +26,13 @@ class MyCustomCard extends StatelessWidget {
           color: context.appColors.primary.withOpacity(0.5),
           width: 2,
         ),
-        boxShadow: [
+        boxShadow: context.appElevations.elevation > 0 ? [
           BoxShadow(
-            color: Theme.of(context).shadowColor.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Theme.of(context).shadowColor.withOpacity(0.08),
+            blurRadius: context.appElevations.elevation * 3,
+            offset: Offset(0, context.appElevations.elevation * 1.5),
           ),
-        ],
+        ] : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

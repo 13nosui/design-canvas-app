@@ -3,6 +3,7 @@ import 'core/design_system/app_colors.dart';
 import 'core/design_system/app_spacing.dart';
 import 'core/design_system/app_typography.dart';
 import 'core/design_system/app_shapes.dart';
+import 'core/design_system/app_elevations.dart';
 import 'core/design_system/theme_controller.dart';
 import 'presentation/pages/design_canvas_page.dart';
 
@@ -27,6 +28,7 @@ class _MyAppState extends State<MyApp> {
   int _fontWeight = 400;
   double _letterSpacing = 0.0;
   double _borderRadius = 8.0;
+  double _elevation = 2.0;
 
   void _updateTheme({
     ThemeMode? mode,
@@ -38,6 +40,7 @@ class _MyAppState extends State<MyApp> {
     int? weight,
     double? letterSpace,
     double? radius,
+    double? elevation,
   }) {
     setState(() {
       if (mode != null) _themeMode = mode;
@@ -49,6 +52,7 @@ class _MyAppState extends State<MyApp> {
       if (weight != null) _fontWeight = weight;
       if (letterSpace != null) _letterSpacing = letterSpace;
       if (radius != null) _borderRadius = radius;
+      if (elevation != null) _elevation = elevation;
     });
   }
 
@@ -91,6 +95,7 @@ class _MyAppState extends State<MyApp> {
           l: _spacingBase * 3,
         ),
         AppShapes(borderRadius: _borderRadius),
+        AppElevations(elevation: _elevation),
         typo,
       ],
     );
@@ -116,6 +121,7 @@ class _MyAppState extends State<MyApp> {
       fontWeight: _fontWeight,
       letterSpacing: _letterSpacing,
       borderRadius: _borderRadius,
+      elevation: _elevation,
       updateTheme: _updateTheme,
       child: MaterialApp(
         title: 'Design Canvas App',

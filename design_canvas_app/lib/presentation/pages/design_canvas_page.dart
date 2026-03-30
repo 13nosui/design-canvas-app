@@ -296,6 +296,47 @@ extension AppShapesExtension on BuildContext {
 ''';
   }
 
+  String _generateAppElevationsCode(double elevation) {
+    final e = elevation.toStringAsFixed(1);
+    
+    return '''import 'package:flutter/material.dart';
+
+class AppElevations extends ThemeExtension<AppElevations> {
+  final double elevation;
+
+  const AppElevations({
+    required this.elevation,
+  });
+
+  @override
+  AppElevations copyWith({double? elevation}) {
+    return AppElevations(
+      elevation: elevation ?? this.elevation,
+    );
+  }
+
+  @override
+  AppElevations lerp(ThemeExtension<AppElevations>? other, double t) {
+    if (other is! AppElevations) {
+      return this;
+    }
+    return AppElevations(
+      elevation: elevation + (other.elevation - elevation) * t,
+    );
+  }
+
+  // ライブエディタからのエクスポート値
+  static const defaultElevations = AppElevations(
+    elevation: $e,
+  );
+}
+
+extension AppElevationsExtension on BuildContext {
+  AppElevations get appElevations => Theme.of(this).extension<AppElevations>() ?? AppElevations.defaultElevations;
+}
+''';
+  }
+
   String _generateAppTypographyCode(String fontFamily, double baseSize, double scaleRatio, int fontWeight, double letterSpacing) {
     return '''import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -409,6 +450,7 @@ extension AppTypographyExtension on BuildContext {
     final colorsCode = _generateAppColorsCode(themeController);
     final spacingCode = _generateAppSpacingCode(themeController.spacingBase);
     final shapesCode = _generateAppShapesCode(themeController.borderRadius);
+    final elevationsCode = _generateAppElevationsCode(themeController.elevation);
     final typographyCode = _generateAppTypographyCode(
       themeController.fontFamily,
       themeController.baseFontSize,
@@ -419,7 +461,7 @@ extension AppTypographyExtension on BuildContext {
 
     if (kIsWeb) {
       // Webブラウザの場合はローカルファイルへの書き込み権限がないため、クリップボードへ保存
-      final fullCode = '/* lib/core/design_system/app_colors.dart */\\n\\n\$colorsCode\\n\\n/* lib/core/design_system/app_spacing.dart */\\n\\n\$spacingCode\\n\\n/* lib/core/design_system/app_shapes.dart */\\n\\n\$shapesCode\\n\\n/* lib/core/design_system/app_typography.dart */\\n\\n\$typographyCode';
+      final fullCode = '/* lib/core/design_system/app_colors.dart */\\n\\n\$colorsCode\\n\\n/* lib/core/design_system/app_spacing.dart */\\n\\n\$spacingCode\\n\\n/* lib/core/design_system/app_shapes.dart */\\n\\n\$shapesCode\\n\\n/* lib/core/design_system/app_elevations.dart */\\n\\n\$elevationsCode\\n\\n/* lib/core/design_system/app_typography.dart */\\n\\n\$typographyCode';
       Clipboard.setData(ClipboardData(text: fullCode));
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('✨ Code copied to clipboard (Web Mode)')),
@@ -427,7 +469,7 @@ extension AppTypographyExtension on BuildContext {
     } else {
       // macOSなどのネイティブ環境ではプロジェクトファイルを直接上書きする
       try {
-        saveFilesToDisk(colorsCode: colorsCode, spacingCode: spacingCode, typographyCode: typographyCode, shapesCode: shapesCode);
+        saveFilesToDisk(colorsCode: colorsCode, spacingCode: spacingCode, typographyCode: typographyCode, shapesCode: shapesCode, elevationsCode: elevationsCode);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('🔥 Source files updated directly! (Native Mode)')),
         );
@@ -583,6 +625,32 @@ extension AppTypographyExtension on BuildContext {
               label: '${themeController.borderRadius.toStringAsFixed(1)} px',
               onChanged: (val) {
                 themeController.updateTheme(radius: val);
+              },
+            ),
+            const SizedBox(height: 32),
+            const Divider(),
+            
+            // --- Elevations ---
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+              child: Text('Elevation / Shadow', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Text(
+                'Current Elevation: ${themeController.elevation.toStringAsFixed(1)}',
+                style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.87), height: 1.4),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Slider(
+              value: themeController.elevation,
+              min: 0.0,
+              max: 24.0,
+              divisions: 24,
+              label: themeController.elevation.toStringAsFixed(1),
+              onChanged: (val) {
+                themeController.updateTheme(elevation: val);
               },
             ),
             const SizedBox(height: 32),
