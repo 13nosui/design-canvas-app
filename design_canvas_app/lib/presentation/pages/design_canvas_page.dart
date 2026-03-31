@@ -32,8 +32,13 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
   bool _showBackgroundDecor = true;
   bool _showConnectors = true;
 
+  List<dynamic> _inspectedFields = [];
+  String? _inspectedFilePath;
+  bool _isInspectorLoading = false;
+
   final CanvasLinkRegistry _linkRegistry = CanvasLinkRegistry();
   final GlobalKey _canvasKey = GlobalKey();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   final double deviceSpacing = 64.0;
 
@@ -106,6 +111,77 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
       }
     }
     return map;
+  }
+
+  Future<void> _loadInspector(String dartFilePath) async {
+    final stylesPath = dartFilePath.replaceFirst('.dart', '.styles.dart');
+    setState(() {
+      _isInspectorLoading = true;
+      _inspectedFilePath = stylesPath;
+      _inspectedFields = [];
+    });
+    
+    _scaffoldKey.currentState?.openEndDrawer();
+
+    try {
+      final res = await http.get(Uri.parse('http://localhost:8080/inspector/parse?path=$stylesPath'));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        setState(() {
+          _inspectedFields = data['fields'] ?? [];
+          _isInspectorLoading = false;
+        });
+      } else {
+        if (mounted) setState(() => _isInspectorLoading = false);
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isInspectorLoading = false);
+    }
+  }
+
+  Future<void> _updateStyleField(String name, String newValue) async {
+    if (_inspectedFilePath == null) return;
+    try {
+      await http.post(
+        Uri.parse('http://localhost:8080/inspector/update'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'path': _inspectedFilePath,
+          'name': name,
+          'value': newValue,
+        }),
+      );
+      // 再パースして最新状態に反映
+      await _loadInspector(_inspectedFilePath!.replaceFirst('.styles.dart', '.dart'));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update failed: $e')));
+      }
+    }
+  }
+
+  Future<void> _promoteToken(String name, String? tokenName, String value) async {
+    if (_inspectedFilePath == null || tokenName == null) return;
+    try {
+      await http.post(
+        Uri.parse('http://localhost:8080/inspector/promote'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'path': _inspectedFilePath,
+          'name': name,
+          'tokenName': tokenName,
+          'value': value,
+        }),
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✨ Elevated to AppTokens!')));
+      }
+      await _loadInspector(_inspectedFilePath!.replaceFirst('.styles.dart', '.dart'));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Promote failed: $e')));
+      }
+    }
   }
 
   Map<String, Offset> _calculatePositions() {
@@ -735,6 +811,19 @@ extension AppTypographyExtension on BuildContext {
               if (route.filePath != null) ...[
                 const SizedBox(width: 8),
                 Tooltip(
+                  message: 'Inspect Styles',
+                  child: IconButton(
+                    icon: const Text('🎨', style: TextStyle(fontSize: 16)),
+                    onPressed: () => _loadInspector(route.filePath!),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+                      minimumSize: const Size(40, 40),
+                      padding: EdgeInsets.zero,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Tooltip(
                   message: 'Open in IDE',
                   child: IconButton(
                     icon: const Text('💻', style: TextStyle(fontSize: 16)),
@@ -817,6 +906,8 @@ extension AppTypographyExtension on BuildContext {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+            if (_inspectedFilePath != null) _buildPropertyInspectorPanel(),
+            if (_inspectedFilePath != null) const Divider(thickness: 4),
             const Padding(
               padding: EdgeInsets.all(20.0),
               child: Text('Live Style Editor', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
@@ -1441,6 +1532,102 @@ extension AppTypographyExtension on BuildContext {
     );
   }
 
+  Widget _buildPropertyInspectorPanel() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('✨ Component Inspector', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              Text('Target: ${_inspectedFilePath!.split('/').last}', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))),
+            ],
+          ),
+        ),
+        if (_isInspectorLoading)
+          const Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator())),
+        if (!_isInspectorLoading && _inspectedFields.isEmpty)
+          const Padding(padding: EdgeInsets.all(20), child: Text('No styling tokens found in this component.')),
+        if (!_isInspectorLoading)
+          ..._inspectedFields.map((field) {
+            final isAppToken = field['isAppToken'] == true;
+            final isCandidate = field['isCandidate'] == true;
+            final name = field['name'];
+            final valueStr = field['value'];
+            final candidateName = field['candidateName'];
+
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey.withOpacity(0.2)))),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: isAppToken ? Theme.of(context).colorScheme.primary.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          isAppToken ? 'Token Linked' : 'Custom Value',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: isAppToken ? Theme.of(context).colorScheme.primary : Colors.deepOrange,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  if (isAppToken)
+                    Text(valueStr, style: TextStyle(fontFamily: 'monospace', fontSize: 12, color: Theme.of(context).colorScheme.onSurface))
+                  else
+                    // ドラッグによるリアルタイムではなくエンターキー更新（テキストフィールド）
+                    TextFormField(
+                      initialValue: valueStr,
+                      style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(4)),
+                        hintText: 'Press Enter to save',
+                      ),
+                      onFieldSubmitted: (newVal) => _updateStyleField(name, newVal),
+                    ),
+                    
+                  if (isCandidate) ...[
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.upgrade, size: 16),
+                        label: Text('Promote to AppTokens.$candidateName', style: const TextStyle(fontSize: 12)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                        ),
+                        onPressed: () => _promoteToken(name, candidateName, valueStr),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          }).toList(),
+      ],
+    );
+  }
+
   Widget _buildDecorCircle(Color color, double size) {
     return Container(
       width: size,
@@ -1463,6 +1650,7 @@ extension AppTypographyExtension on BuildContext {
     final complement = HSLColor.fromColor(primary).withHue((HSLColor.fromColor(primary).hue + 180) % 360).toColor();
 
     return Scaffold(
+      key: _scaffoldKey,
       appBar: AppBar(
         title: const Text('Design Canvas'),
         elevation: 1,

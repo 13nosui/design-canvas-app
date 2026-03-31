@@ -105,6 +105,120 @@ Future<void> main() async {
       } finally {
         await request.response.close();
       }
+    } else if (request.method == 'GET' && request.uri.path == '/inspector/parse') {
+      try {
+        final filePath = request.uri.queryParameters['path'];
+        if (filePath == null) throw Exception('path is required');
+        final file = File(filePath);
+        if (!file.existsSync()) throw Exception('File not found');
+
+        final content = await file.readAsString();
+        final List<Map<String, dynamic>> fields = [];
+
+        // 簡易的なパース（ASTではなく、static const ... = ... ; のブロックを抽出）
+        // 複数行にまたがる定義も捉えるため、正規表現を活用
+        final regex = RegExp(r'static\s+(const|final)\s+([a-zA-Z0-9_]+)\s*=\s*([^;]+);([^\n]*)');
+        final matches = regex.allMatches(content);
+
+        for (final match in matches) {
+          final name = match.group(2)!;
+          final value = match.group(3)!.trim().replaceAll(RegExp(r'\s+'), ' '); // flatten multiline
+          final comment = match.group(4) ?? '';
+          
+          final isCandidate = comment.contains('TODO: New Token Candidate');
+          String? candidateName;
+          if (isCandidate) {
+            final candMatch = RegExp(r'-\s*([a-zA-Z0-9_]+)').firstMatch(comment);
+            if (candMatch != null) candidateName = candMatch.group(1);
+          }
+
+          fields.add({
+            'name': name,
+            'value': value,
+            'isAppToken': value.contains('AppTokens.'),
+            'isCandidate': isCandidate,
+            'candidateName': candidateName,
+          });
+        }
+
+        request.response.statusCode = HttpStatus.ok;
+        request.response.write(jsonEncode({'status': 'success', 'fields': fields}));
+      } catch (e) {
+        request.response.statusCode = HttpStatus.internalServerError;
+        request.response.write(jsonEncode({'error': e.toString()}));
+      } finally {
+        await request.response.close();
+      }
+
+    } else if (request.method == 'POST' && request.uri.path == '/inspector/update') {
+      // リアルタイムプレビュー用：ドラッグ等による書き換え
+      try {
+        final content = await utf8.decoder.bind(request).join();
+        final data = jsonDecode(content);
+        final filePath = data['path'];
+        final fieldName = data['name'];
+        final newValue = data['value']; // "AppTokens.xxx" or "Color(0xFF...)"
+
+        final file = File(filePath);
+        String fileContent = file.readAsStringSync();
+
+        // 対象フィールドの値を置換する (正規表現で = から ; までを置換)
+        final replaceRegex = RegExp(r'(static\s+(?:const|final)\s+' + fieldName + r'\s*=\s*)([^;]+)(;)');
+        if (replaceRegex.hasMatch(fileContent)) {
+           fileContent = fileContent.replaceFirstMapped(replaceRegex, (m) {
+             return '${m.group(1)}$newValue${m.group(3)}';
+           });
+           file.writeAsStringSync(fileContent);
+        }
+
+        request.response.statusCode = HttpStatus.ok;
+        request.response.write(jsonEncode({'status': 'success'}));
+      } catch (e) {
+        request.response.statusCode = HttpStatus.internalServerError;
+        request.response.write(jsonEncode({'error': e.toString()}));
+      } finally {
+        await request.response.close();
+      }
+
+    } else if (request.method == 'POST' && request.uri.path == '/inspector/promote') {
+      // Token候補を公式トークンに昇格させる
+      try {
+        final content = await utf8.decoder.bind(request).join();
+        final data = jsonDecode(content);
+        final filePath = data['path'];
+        final fieldName = data['name'];
+        final tokenName = data['tokenName'];
+        final tokenValue = data['value'];
+
+        // 1. tokens.dart に追記する
+        final tokenFile = File('lib/core/design_system/tokens.dart');
+        String tokenContent = tokenFile.readAsStringSync();
+        final appendIndex = tokenContent.lastIndexOf('}');
+        if (appendIndex != -1) {
+          final insertText = '\n  static const $tokenName = $tokenValue; // promoted from $fieldName\n';
+          tokenContent = tokenContent.substring(0, appendIndex) + insertText + tokenContent.substring(appendIndex);
+          tokenFile.writeAsStringSync(tokenContent);
+        }
+
+        // 2. 対象スタイルファイルのフィールドを AppTokens.xxx に置換、TODOコメントを削除
+        final styleFile = File(filePath);
+        String styleContent = styleFile.readAsStringSync();
+        final replaceRegex = RegExp(r'(static\s+(?:const|final)\s+' + fieldName + r'\s*=\s*)([^;]+)(;[^\n]*\n?)');
+        if (replaceRegex.hasMatch(styleContent)) {
+           styleContent = styleContent.replaceFirstMapped(replaceRegex, (m) {
+             return '${m.group(1)}AppTokens.$tokenName;\n'; // NOTE: Comment removed
+           });
+           styleFile.writeAsStringSync(styleContent);
+        }
+
+        request.response.statusCode = HttpStatus.ok;
+        request.response.write(jsonEncode({'status': 'success'}));
+      } catch (e) {
+        request.response.statusCode = HttpStatus.internalServerError;
+        request.response.write(jsonEncode({'error': e.toString()}));
+      } finally {
+        await request.response.close();
+      }
     } else {
       request.response.statusCode = HttpStatus.notFound;
       request.response.write(jsonEncode({'error': 'Not Found'}));

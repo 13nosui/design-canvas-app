@@ -37,4 +37,8 @@ class AppTokens {
   static const borderWidthThick = 2.0;
   // 以下のようにRadius自体を保持することも可能です
   // static const radiusCircularMax = 999.0;
+
+  static const colorBrandModern = Color(0xFF5E6AD2); // promoted from fabColor
+
+  static const spaceL = EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0); // promoted from tweetPadding
 }
