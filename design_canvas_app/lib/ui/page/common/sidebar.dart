@@ -49,10 +49,15 @@ class _SidebarMenuState extends State<SidebarMenu> {
               onTap: () {},
               title: Row(
                 children: <Widget>[
-                  Text(
-                    state.userModel!.displayName ?? "",
-                    style: SidebarStyles.displayNameStyle,
+                  // --- ここから修正 ---
+                  Flexible(
+                    child: Text(
+                      state.userModel!.displayName ?? "",
+                      style: SidebarStyles.displayNameStyle,
+                      overflow: TextOverflow.ellipsis, // はみ出したら...にする
+                    ),
                   ),
+                  // --- ここまで修正 ---
                   const SizedBox(width: SidebarStyles.displayVerifiedSpacing),
                   if (state.userModel!.isVerified ?? false)
                     const Icon(Icons.verified,
@@ -69,7 +74,8 @@ class _SidebarMenuState extends State<SidebarMenu> {
             ),
             Container(
               alignment: Alignment.center,
-              child: Row(
+              child: Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: <Widget>[
                   const SizedBox(width: SidebarStyles.statPrefixWidth),
                   _textButton(
@@ -89,7 +95,9 @@ class _SidebarMenuState extends State<SidebarMenu> {
   Widget _textButton(BuildContext context, String count, String text) {
     return InkWell(
       onTap: () {},
-      child: Row(
+      child: Wrap(
+        // 変更点: Row を Wrap に変更
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: <Widget>[
           Text(
             '$count ',

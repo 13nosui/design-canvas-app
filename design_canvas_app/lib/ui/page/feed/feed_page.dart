@@ -13,17 +13,18 @@ class FeedPage extends StatelessWidget {
     final state = context.watch<FeedState>();
 
     return Scaffold(
-      appBar: AppBar(
-        title: Inspectable(
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: Inspectable(
           id: '__Text__Timeline',
           isText: true,
-          child: Container(
-            color: Colors.transparent, // ヒットテストを安定して拾うための透明な領域
-            child: Text('aaa', style: FeedAppBarStyle.titleTypography),
+          child: AppBar(
+            // titleの中のInspectableとGestureDetectorを外し、シンプルなTextに戻します
+            title: Text('yyyy', style: FeedAppBarStyle.titleTypography),
+            backgroundColor: FeedAppBarStyle.backgroundColor,
+            elevation: 1,
           ),
         ),
-        backgroundColor: FeedAppBarStyle.backgroundColor,
-        elevation: 1,
       ),
       body: ListView.builder(
         itemCount: state.tweets.length,
@@ -47,11 +48,18 @@ class FeedPage extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            Text(tweet.displayName,
-                                style: FeedTweetStyle.nameTypography),
+                            Flexible(
+                              child: Text(tweet.displayName,
+                                  style: FeedTweetStyle.nameTypography,
+                                  overflow: TextOverflow.ellipsis),
+                            ),
                             const SizedBox(width: 5),
-                            Text('${tweet.userName} · ${tweet.timeAgo}',
-                                style: FeedTweetStyle.handleTypography),
+                            Flexible(
+                              child: Text(
+                                  '${tweet.userName} · ${tweet.timeAgo}',
+                                  style: FeedTweetStyle.handleTypography,
+                                  overflow: TextOverflow.ellipsis),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 5),

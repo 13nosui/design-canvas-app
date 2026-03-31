@@ -223,7 +223,7 @@ class _PropertyFieldEditorState extends State<PropertyFieldEditor> {
                       fontWeight: FontWeight.w600,
                       color: Colors.black54),
                   maxLines: 1,
-                  overflow: TextOverflow.visible,
+                  overflow: TextOverflow.ellipsis, // 変更：visible から ellipsis にする
                 ),
               ),
               const SizedBox(width: 4),

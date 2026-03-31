@@ -49,6 +49,7 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
   bool _selectedComponentIsText = false;
   Offset? _selectedComponentPosition;
   OverlayEntry? _inlineEditorEntry;
+  bool _isModifierPressed = false;
 
   final CanvasLinkRegistry _linkRegistry = CanvasLinkRegistry();
   final GlobalKey _canvasKey = GlobalKey();
@@ -89,11 +90,7 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
   final double xSpacing = 200;
 
   void _onCanvasPointerDown(PointerDownEvent event) {
-    // Cmd(Mac) または Ctrl(Win/Linux) が押されているかチェック
-    final isModifierPressed = HardwareKeyboard.instance.isMetaPressed ||
-        HardwareKeyboard.instance.isControlPressed;
-
-    if (!isModifierPressed) {
+    if (!_isModifierPressed) {
       if (_inlineEditorEntry != null) _removeInlineEditor();
       return;
     }
@@ -143,7 +140,6 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
           _transformationController.value = _animation!.value;
         }
       });
-    HardwareKeyboard.instance.addHandler(_keyHandler);
   }
 
   void _onLinksChanged() {
@@ -156,7 +152,6 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
     _linkRegistry.dispose();
     _transformationController.dispose();
     _animationController.dispose();
-    HardwareKeyboard.instance.removeHandler(_keyHandler);
     if (_inlineEditorEntry != null) {
       _inlineEditorEntry!.remove();
       _inlineEditorEntry = null;
@@ -188,10 +183,8 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
       return;
 
     // Fallback: Currently we hardcode the Timeline text, ideally this comes from node backend or AST
-    String currentText = 'Timeline';
-    if (_selectedComponentId == '__Text__Timeline') {
-      currentText = 'Timeline';
-    }
+    // ASTパース等で本来の文字列を取得するまでのプレースホルダー
+    String currentText = 'New Text';
 
     final entry = OverlayEntry(builder: (context) {
       return Positioned(
@@ -341,7 +334,7 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-                '✨ Style saved! Please press "r" in terminal for Hot Reload.',
+                '✨ Style saved! Please press "R" (Shift+r) in terminal for Hot Restart.',
                 style: TextStyle(color: Colors.white)),
             backgroundColor: Colors.blueAccent,
             duration: Duration(seconds: 3),
@@ -655,6 +648,7 @@ class AppBorders extends ThemeExtension<AppBorders> {
   final Color borderColor;
 
   const AppBorders({
+    required this.borderWidth,
     required this.borderWidth,
     required this.borderColor,
   });
@@ -1930,142 +1924,202 @@ extension AppTypographyExtension on BuildContext {
       body: Row(
         children: [
           Expanded(
-            child: Listener(
-              onPointerDown: _onCanvasPointerDown,
-              behavior: HitTestBehavior.translucent,
-              child: CanvasState(
-                selectedComponentId: _selectedComponentId,
-                child: InteractiveViewer(
-                  transformationController: _transformationController,
-                  boundaryMargin: const EdgeInsets.all(double.infinity),
-                  minScale: 0.05,
-                  maxScale: 3.0,
-                  constrained: false,
-                  child: SizedBox(
-                    width: 8000,
-                    height: 3000,
-                    child: InheritedRegistry(
-                      registry: _linkRegistry,
-                      canvasKey: _canvasKey,
-                      child: Stack(
-                        key: _canvasKey,
-                        children: [
-                          Positioned.fill(
-                            child: Container(
-                              color: Theme.of(context).scaffoldBackgroundColor,
-                            ),
-                          ),
-                          if (_showBackgroundDecor)
+            child: Focus(
+              autofocus: true,
+              onKeyEvent: (node, event) {
+                if (event is KeyDownEvent) {
+                  if (event.logicalKey == LogicalKeyboardKey.metaLeft ||
+                      event.logicalKey == LogicalKeyboardKey.metaRight ||
+                      event.logicalKey == LogicalKeyboardKey.controlLeft ||
+                      event.logicalKey == LogicalKeyboardKey.controlRight) {
+                    _isModifierPressed = true;
+                  }
+                  if (event.logicalKey == LogicalKeyboardKey.keyT) {
+                    if (_selectedComponentId != null &&
+                        _selectedComponentIsText &&
+                        _inlineEditorEntry == null) {
+                      _showInlineEditor();
+                      return KeyEventResult.handled;
+                    }
+                  }
+                } else if (event is KeyUpEvent) {
+                  if (event.logicalKey == LogicalKeyboardKey.metaLeft ||
+                      event.logicalKey == LogicalKeyboardKey.metaRight ||
+                      event.logicalKey == LogicalKeyboardKey.controlLeft ||
+                      event.logicalKey == LogicalKeyboardKey.controlRight) {
+                    _isModifierPressed = false;
+                  }
+                }
+                return KeyEventResult.ignored;
+              },
+              child: Listener(
+                onPointerDown: _onCanvasPointerDown,
+                behavior: HitTestBehavior.translucent,
+                child: CanvasState(
+                  selectedComponentId: _selectedComponentId,
+                  child: InteractiveViewer(
+                    transformationController: _transformationController,
+                    boundaryMargin: const EdgeInsets.all(double.infinity),
+                    minScale: 0.05,
+                    maxScale: 3.0,
+                    constrained: false,
+                    child: SizedBox(
+                      width: 8000,
+                      height: 3000,
+                      child: InheritedRegistry(
+                        registry: _linkRegistry,
+                        canvasKey: _canvasKey,
+                        child: Stack(
+                          key: _canvasKey,
+                          children: [
                             Positioned.fill(
-                              child: Stack(
-                                children: [
-                                  Positioned(
-                                    left: -200,
-                                    top: 100,
-                                    child: _buildDecorCircle(
-                                        primary.withOpacity(0.4), 1200),
-                                  ),
-                                  Positioned(
-                                    left: 1000,
-                                    top: -400,
-                                    child: _buildDecorCircle(
-                                        complement.withOpacity(0.3), 1400),
-                                  ),
-                                  Positioned(
-                                    left: 2800,
-                                    top: 500,
-                                    child: _buildDecorCircle(
-                                        Colors.pinkAccent.withOpacity(0.3),
-                                        1000),
-                                  ),
-                                  Positioned(
-                                    left: 4200,
-                                    top: -100,
-                                    child: _buildDecorCircle(
-                                        Colors.cyanAccent.withOpacity(0.3),
-                                        1500),
-                                  ),
-                                  Positioned(
-                                    left: 6000,
-                                    top: 600,
-                                    child: _buildDecorCircle(
-                                        primary.withOpacity(0.35), 1100),
-                                  ),
-                                ],
+                              child: Container(
+                                color:
+                                    Theme.of(context).scaffoldBackgroundColor,
                               ),
                             ),
-                          if (_showConnectors)
-                            Positioned.fill(
-                              child: Builder(builder: (context) {
-                                final sitemapDefinition =
-                                    <String, List<String>>{};
-                                final flatRoutes = _getFlatRoutes(canvasRoutes);
-                                for (final r in flatRoutes.values) {
-                                  final targets = <String>[];
-                                  targets.addAll(
-                                      r.children.map((c) => c.name ?? c.path));
-                                  // linksToの中に含まれるpathやnameを探索して正しいキー(name ?? path)を取得する
-                                  for (final link in r.linksTo) {
-                                    final match = flatRoutes.values
-                                        .where((def) =>
-                                            def.path == link ||
-                                            def.name == link)
-                                        .firstOrNull;
-                                    if (match != null) {
-                                      targets.add(match.name ?? match.path);
-                                    } else {
-                                      targets.add(link);
+                            if (_showBackgroundDecor)
+                              Positioned.fill(
+                                child: Stack(
+                                  children: [
+                                    Positioned(
+                                      left: -200,
+                                      top: 100,
+                                      child: _buildDecorCircle(
+                                          primary.withOpacity(0.4), 1200),
+                                    ),
+                                    Positioned(
+                                      left: 1000,
+                                      top: -400,
+                                      child: _buildDecorCircle(
+                                          complement.withOpacity(0.3), 1400),
+                                    ),
+                                    Positioned(
+                                      left: 2800,
+                                      top: 500,
+                                      child: _buildDecorCircle(
+                                          Colors.pinkAccent.withOpacity(0.3),
+                                          1000),
+                                    ),
+                                    Positioned(
+                                      left: 4200,
+                                      top: -100,
+                                      child: _buildDecorCircle(
+                                          Colors.cyanAccent.withOpacity(0.3),
+                                          1500),
+                                    ),
+                                    Positioned(
+                                      left: 6000,
+                                      top: 600,
+                                      child: _buildDecorCircle(
+                                          primary.withOpacity(0.35), 1100),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            if (_showConnectors)
+                              Positioned.fill(
+                                child: Builder(builder: (context) {
+                                  final sitemapDefinition =
+                                      <String, List<String>>{};
+                                  final flatRoutes =
+                                      _getFlatRoutes(canvasRoutes);
+                                  for (final r in flatRoutes.values) {
+                                    final targets = <String>[];
+                                    targets.addAll(r.children
+                                        .map((c) => c.name ?? c.path));
+                                    // linksToの中に含まれるpathやnameを探索して正しいキー(name ?? path)を取得する
+                                    for (final link in r.linksTo) {
+                                      final match = flatRoutes.values
+                                          .where((def) =>
+                                              def.path == link ||
+                                              def.name == link)
+                                          .firstOrNull;
+                                      if (match != null) {
+                                        targets.add(match.name ?? match.path);
+                                      } else {
+                                        targets.add(link);
+                                      }
                                     }
+                                    sitemapDefinition[r.name ?? r.path] =
+                                        targets;
                                   }
-                                  sitemapDefinition[r.name ?? r.path] = targets;
-                                }
-                                return CustomPaint(
-                                  painter: SitemapPainter(
-                                    sitemap: sitemapDefinition,
-                                    positions: positions,
-                                    dynamicLinks: _linkRegistry.links,
-                                    screenWidth: screenWidth,
-                                    screenHeight: screenHeight,
-                                    lineColor: context.appColors.primary,
-                                  ),
-                                );
-                              }),
-                            ),
-                          for (final entry in positions.entries)
-                            Positioned(
-                              left: entry.value.dx,
-                              top: entry.value.dy,
-                              width: screenWidth,
-                              height: screenHeight,
-                              child: GestureDetector(
-                                behavior: HitTestBehavior.opaque,
-                                onTap: () => _zoomToScreen(entry.value),
-                                onDoubleTap: () {
-                                  final snakeCaseKey = entry.key.toLowerCase();
-                                  final filePath =
-                                      'lib/presentation/pages/${snakeCaseKey}_page.dart';
-                                  debugPrint(
-                                      'ANTIGRAVITY_OPEN_FILE: $filePath');
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content:
-                                          Text('🖥️ Click-to-Code ($filePath)'),
-                                      duration: const Duration(seconds: 2),
+                                  return CustomPaint(
+                                    painter: SitemapPainter(
+                                      sitemap: sitemapDefinition,
+                                      positions: positions,
+                                      dynamicLinks: _linkRegistry.links,
+                                      screenWidth: screenWidth,
+                                      screenHeight: screenHeight,
+                                      lineColor: context.appColors.primary,
                                     ),
                                   );
-                                },
-                                child: _previewMode == PreviewMode.allDevices
-                                    ? Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.center,
-                                        children: AppDevices.values
-                                            .asMap()
-                                            .entries
-                                            .map((devEntry) {
-                                          final idx = devEntry.key;
-                                          final dev = devEntry.value;
+                                }),
+                              ),
+                            for (final entry in positions.entries)
+                              Positioned(
+                                left: entry.value.dx,
+                                top: entry.value.dy,
+                                width: screenWidth,
+                                height: screenHeight,
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTap: () => _zoomToScreen(entry.value),
+                                  onDoubleTap: () {
+                                    final snakeCaseKey =
+                                        entry.key.toLowerCase();
+                                    final filePath =
+                                        'lib/presentation/pages/${snakeCaseKey}_page.dart';
+                                    debugPrint(
+                                        'ANTIGRAVITY_OPEN_FILE: $filePath');
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                            '🖥️ Click-to-Code ($filePath)'),
+                                        duration: const Duration(seconds: 2),
+                                      ),
+                                    );
+                                  },
+                                  child: _previewMode == PreviewMode.allDevices
+                                      ? Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.center,
+                                          children: AppDevices.values
+                                              .asMap()
+                                              .entries
+                                              .map((devEntry) {
+                                            final idx = devEntry.key;
+                                            final dev = devEntry.value;
+                                            final flatRoutes =
+                                                _getFlatRoutes(canvasRoutes);
+                                            final route = flatRoutes[entry.key];
+                                            final content =
+                                                CurrentRouteProvider(
+                                              routePath: route?.name ??
+                                                  route?.path ??
+                                                  '',
+                                              child: route?.builder(context) ??
+                                                  const Center(
+                                                      child: Text('Not Found')),
+                                            );
+
+                                            return Padding(
+                                              padding: EdgeInsets.only(
+                                                right: idx <
+                                                        AppDevices
+                                                                .values.length -
+                                                            1
+                                                    ? deviceSpacing
+                                                    : 0,
+                                              ),
+                                              child: _buildDevicePreview(
+                                                  dev, route, content),
+                                            );
+                                          }).toList(),
+                                        )
+                                      : (() {
                                           final flatRoutes =
                                               _getFlatRoutes(canvasRoutes);
                                           final route = flatRoutes[entry.key];
@@ -2077,40 +2131,16 @@ extension AppTypographyExtension on BuildContext {
                                                 const Center(
                                                     child: Text('Not Found')),
                                           );
-
-                                          return Padding(
-                                            padding: EdgeInsets.only(
-                                              right: idx <
-                                                      AppDevices.values.length -
-                                                          1
-                                                  ? deviceSpacing
-                                                  : 0,
-                                            ),
-                                            child: _buildDevicePreview(
-                                                dev, route, content),
+                                          return _buildDevicePreview(
+                                            _singleDevice!,
+                                            route,
+                                            content,
                                           );
-                                        }).toList(),
-                                      )
-                                    : (() {
-                                        final flatRoutes =
-                                            _getFlatRoutes(canvasRoutes);
-                                        final route = flatRoutes[entry.key];
-                                        final content = CurrentRouteProvider(
-                                          routePath:
-                                              route?.name ?? route?.path ?? '',
-                                          child: route?.builder(context) ??
-                                              const Center(
-                                                  child: Text('Not Found')),
-                                        );
-                                        return _buildDevicePreview(
-                                          _singleDevice!,
-                                          route,
-                                          content,
-                                        );
-                                      })(),
+                                        })(),
+                                ),
                               ),
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -2171,8 +2201,11 @@ extension AppTypographyExtension on BuildContext {
             ),
             child: ClipRect(
               // 横幅が0になっても中身がはみ出さないようにClip
-              child: SizedBox(
-                width: _inspectorWidth,
+              // --- ここから修正 ---
+              child: OverflowBox(
+                alignment: Alignment.topLeft,
+                minWidth: _inspectorWidth,
+                maxWidth: _inspectorWidth,
                 child: Theme(
                   data: ThemeData(
                     useMaterial3: true,
@@ -2193,6 +2226,7 @@ extension AppTypographyExtension on BuildContext {
                   ),
                 ),
               ),
+              // --- ここまで修正 ---
             ),
           ),
         ], // end Row children

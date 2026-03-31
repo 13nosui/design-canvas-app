@@ -45,13 +45,16 @@ class Inspectable extends StatelessWidget {
   Widget build(BuildContext context) {
     final selectedId = CanvasState.of(context)?.selectedComponentId;
     final isSelected = selectedId == id;
-    
+
     Widget content = MetaData(
       metaData: InspectableData(id: id, isText: isText),
-      behavior: HitTestBehavior.translucent, // Allow hit testing even if transparent
-      child: child,
+      behavior: HitTestBehavior.opaque, // opaque にして強制的にヒットテストを拾う
+      child: Container(
+        color: Colors.transparent, // 子供のサイズいっぱいにヒット領域を広げる
+        child: child,
+      ),
     );
-    
+
     if (isSelected) {
       content = Container(
         foregroundDecoration: BoxDecoration(
@@ -61,7 +64,7 @@ class Inspectable extends StatelessWidget {
         child: content,
       );
     }
-    
+
     return content;
   }
 }
