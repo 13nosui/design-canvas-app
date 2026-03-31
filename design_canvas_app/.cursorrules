@@ -49,3 +49,22 @@ class MyButton extends StatelessWidget {
 ## 3. キャンバスツール（UIエディタ）向け連携
 - デザインキャンバスからは `{name}.styles.dart` 側に対してパースおよび書き換え（Write）が行われます。
 - `{name}.dart` 側は基本的に「キャンバスからは編集不可」または「構造の読み取りのみ」として扱われます。
+
+## 4. デザイントークン (AppTokens) の利用と自動マッピングルール
+キャンバス（及びAIエージェント等のコード生成エンジン）が `.styles.dart` ファイルを更新・自動生成する際は、可能な限り `lib/core/design_system/tokens.dart` に定義された `AppTokens` の値を直接参照するようにしてください。
+
+**⚠️ 新規トークン候補の記録ルール（重要）**
+もしキャンバス上でコンポーネントに `AppTokens` に存在しない独自の値（マジックナンバー、生の色コード等）が割り当てられた場合は、一時的にそのまま生の値を使用しつつ、**必ずその行の末尾に `// TODO: New Token Candidate - {意味のある変数名}` というコメントを付与**してください。
+
+**良い例 (Tokensの適用):**
+```dart
+static const padding = EdgeInsets.symmetric(horizontal: AppTokens.spaceM, vertical: AppTokens.spaceS);
+static const textStyle = TextStyle(color: AppTokens.colorTextPrimary, fontSize: AppTokens.fontBodyM);
+```
+
+**例外例 (未定義値の記録):**
+```dart
+static final headerColor = Color(0xFFF3F4F6); // TODO: New Token Candidate - colorHeaderBg
+static const customPadding = EdgeInsets.all(12.0); // TODO: New Token Candidate - spaceMediumSmall
+```
+定期的にこの `New Token Candidate` コメントを抽出し、`AppTokens` に昇格（正規登録）させる運用を行います。

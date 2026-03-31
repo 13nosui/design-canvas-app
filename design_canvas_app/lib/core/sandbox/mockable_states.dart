@@ -104,3 +104,105 @@ class FirebaseAuthState extends AuthState {
     // FirebaseAuth.instance.signOut();
   }
 }
+
+/// ----------------------------------------------------
+/// Feed の抽象インターフェースとモック
+/// ----------------------------------------------------
+class TweetModel {
+  final String id;
+  final String userName;
+  final String displayName;
+  final String content;
+  final String timeAgo;
+  final int likes;
+  final int retweets;
+
+  TweetModel({
+    required this.id,
+    required this.userName,
+    required this.displayName,
+    required this.content,
+    required this.timeAgo,
+    this.likes = 0,
+    this.retweets = 0,
+  });
+}
+
+abstract class FeedState extends ChangeNotifier {
+  List<TweetModel> get tweets;
+  bool get isLoading;
+}
+
+class MockFeedState extends FeedState {
+  final List<TweetModel> _tweets = [
+    TweetModel(
+      id: '1',
+      userName: '@flutter_dev',
+      displayName: 'Flutter',
+      content: 'Hello World from the Flutter Design Canvas! 🎨✨ The UI rule decoupling is working perfectly.',
+      timeAgo: '5m',
+      likes: 420,
+      retweets: 56,
+    ),
+    TweetModel(
+      id: '2',
+      userName: '@dart_lang',
+      displayName: 'Dart',
+      content: 'Just deployed the newest automated mapping script. `AppTokens` is awesome.',
+      timeAgo: '1h',
+      likes: 128,
+      retweets: 12,
+    ),
+    TweetModel(
+      id: '3',
+      userName: '@test_user_dummy',
+      displayName: 'Test User',
+      content: 'This is an example tweet mocked via CanvasSandbox without starting any backend servers!!!',
+      timeAgo: '2h',
+      likes: 999,
+      retweets: 485,
+    ),
+  ];
+
+  @override
+  List<TweetModel> get tweets => _tweets;
+
+  @override
+  bool get isLoading => false;
+}
+
+/// ----------------------------------------------------
+/// Chat (Message) の抽象インターフェースとモック
+/// ----------------------------------------------------
+class MessageModel {
+  final String senderId;
+  final String text;
+  final String timeStamp;
+  final bool isMe;
+
+  MessageModel({
+    required this.senderId,
+    required this.text,
+    required this.timeStamp,
+    required this.isMe,
+  });
+}
+
+abstract class ChatState extends ChangeNotifier {
+  List<MessageModel> get messages;
+  bool get isReceiving;
+}
+
+class MockChatState extends ChatState {
+  final List<MessageModel> _messages = [
+    MessageModel(senderId: 'contact1', text: 'Hey, did you see the new feature?', timeStamp: '10:00 AM', isMe: false),
+    MessageModel(senderId: 'me', text: 'Yeah! The Canvas sandbox integration looks incredible.', timeStamp: '10:02 AM', isMe: true),
+    MessageModel(senderId: 'contact1', text: 'We don\'t even need Firebase to design these screens anymore.', timeStamp: '10:05 AM', isMe: false),
+  ];
+
+  @override
+  List<MessageModel> get messages => _messages;
+
+  @override
+  bool get isReceiving => false;
+}
