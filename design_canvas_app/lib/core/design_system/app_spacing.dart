@@ -46,5 +46,6 @@ class AppSpacing extends ThemeExtension<AppSpacing> {
 
 // BuildContextから簡単に呼び出せるようにするための拡張
 extension AppSpacingExtension on BuildContext {
-  AppSpacing get appSpacing => Theme.of(this).extension<AppSpacing>() ?? AppSpacing.defaultSpacing;
+  AppSpacing get appSpacing =>
+      Theme.of(this).extension<AppSpacing>() ?? AppSpacing.defaultSpacing;
 }

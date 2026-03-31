@@ -39,5 +39,6 @@ class AppBorders extends ThemeExtension<AppBorders> {
 }
 
 extension AppBordersExtension on BuildContext {
-  AppBorders get appBorders => Theme.of(this).extension<AppBorders>() ?? AppBorders.defaultBorders;
+  AppBorders get appBorders =>
+      Theme.of(this).extension<AppBorders>() ?? AppBorders.defaultBorders;
 }

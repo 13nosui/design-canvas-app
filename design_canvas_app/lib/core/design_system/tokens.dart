@@ -24,9 +24,9 @@ class AppTokens {
   // --- Spacing ---
   // 小さい単位から体系化した間隔トークン
   static const spaceXXS = 3.0; // アイコンとテキストの間など
-  static const spaceXS = 5.0;  // メニューアイコンの上余白など
-  static const spaceS = 10.0;  // リストのギャップなど
-  static const spaceM = 17.0;  // プレフィックスのパディングなど
+  static const spaceXS = 5.0; // メニューアイコンの上余白など
+  static const spaceS = 10.0; // リストのギャップなど
+  static const spaceM = 17.0; // プレフィックスのパディングなど
 
   // --- Sizing (Heights/Widths) ---
   static const sizeAvatarBase = 56.0;
@@ -40,5 +40,6 @@ class AppTokens {
 
   static const colorBrandModern = Color(0xFF5E6AD2); // promoted from fabColor
 
-  static const spaceL = EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0); // promoted from tweetPadding
+  static const spaceL = EdgeInsets.symmetric(
+      horizontal: 24.0, vertical: 16.0); // promoted from tweetPadding
 }

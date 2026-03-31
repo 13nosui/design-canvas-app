@@ -26,7 +26,7 @@ class LinterWrapper extends StatelessWidget {
       clipBehavior: Clip.none,
       children: [
         child,
-        
+
         // オーバーレイ
         Positioned.fill(
           child: CustomPaint(
@@ -116,7 +116,7 @@ class _NonCompliantPainter extends CustomPainter {
       ..color = Colors.red
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3.0;
-    
+
     // 破線を真面目に描画する
     final path = Path()..addRect(Offset.zero & size);
     _drawDashedPath(canvas, path, borderPaint);

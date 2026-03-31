@@ -36,7 +36,7 @@ abstract class AuthState extends ChangeNotifier {
   UserModel? get userModel;
   String? get userId;
   UserModel? get profileUserModel;
-  
+
   Future<void> getProfileUser();
   void logoutCallback();
 }
@@ -85,13 +85,16 @@ class MockAuthState extends AuthState {
 class FirebaseAuthState extends AuthState {
   // 実際はここにFirebaseAuthなどのインスタンスを持ち、本物のユーザー情報を返す。
   @override
-  UserModel? get userModel => throw UnimplementedError('Real Firebase Implementation here');
+  UserModel? get userModel =>
+      throw UnimplementedError('Real Firebase Implementation here');
 
   @override
-  String? get userId => throw UnimplementedError('Real Firebase Implementation here');
+  String? get userId =>
+      throw UnimplementedError('Real Firebase Implementation here');
 
   @override
-  UserModel? get profileUserModel => throw UnimplementedError('Real Firebase Implementation here');
+  UserModel? get profileUserModel =>
+      throw UnimplementedError('Real Firebase Implementation here');
 
   @override
   Future<void> getProfileUser() async {
@@ -139,7 +142,8 @@ class MockFeedState extends FeedState {
       id: '1',
       userName: '@flutter_dev',
       displayName: 'Flutter',
-      content: 'Hello World from the Flutter Design Canvas! 🎨✨ The UI rule decoupling is working perfectly.',
+      content:
+          'Hello World from the Flutter Design Canvas! 🎨✨ The UI rule decoupling is working perfectly.',
       timeAgo: '5m',
       likes: 420,
       retweets: 56,
@@ -148,7 +152,8 @@ class MockFeedState extends FeedState {
       id: '2',
       userName: '@dart_lang',
       displayName: 'Dart',
-      content: 'Just deployed the newest automated mapping script. `AppTokens` is awesome.',
+      content:
+          'Just deployed the newest automated mapping script. `AppTokens` is awesome.',
       timeAgo: '1h',
       likes: 128,
       retweets: 12,
@@ -157,7 +162,8 @@ class MockFeedState extends FeedState {
       id: '3',
       userName: '@test_user_dummy',
       displayName: 'Test User',
-      content: 'This is an example tweet mocked via CanvasSandbox without starting any backend servers!!!',
+      content:
+          'This is an example tweet mocked via CanvasSandbox without starting any backend servers!!!',
       timeAgo: '2h',
       likes: 999,
       retweets: 485,
@@ -195,9 +201,21 @@ abstract class ChatState extends ChangeNotifier {
 
 class MockChatState extends ChatState {
   final List<MessageModel> _messages = [
-    MessageModel(senderId: 'contact1', text: 'Hey, did you see the new feature?', timeStamp: '10:00 AM', isMe: false),
-    MessageModel(senderId: 'me', text: 'Yeah! The Canvas sandbox integration looks incredible.', timeStamp: '10:02 AM', isMe: true),
-    MessageModel(senderId: 'contact1', text: 'We don\'t even need Firebase to design these screens anymore.', timeStamp: '10:05 AM', isMe: false),
+    MessageModel(
+        senderId: 'contact1',
+        text: 'Hey, did you see the new feature?',
+        timeStamp: '10:00 AM',
+        isMe: false),
+    MessageModel(
+        senderId: 'me',
+        text: 'Yeah! The Canvas sandbox integration looks incredible.',
+        timeStamp: '10:02 AM',
+        isMe: true),
+    MessageModel(
+        senderId: 'contact1',
+        text: 'We don\'t even need Firebase to design these screens anymore.',
+        timeStamp: '10:05 AM',
+        isMe: false),
   ];
 
   @override

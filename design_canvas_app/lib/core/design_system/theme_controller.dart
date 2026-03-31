@@ -70,29 +70,30 @@ class ThemeControllerProvider extends InheritedWidget {
   });
 
   static ThemeControllerProvider of(BuildContext context) {
-    return context.dependOnInheritedWidgetOfExactType<ThemeControllerProvider>()!;
+    return context
+        .dependOnInheritedWidgetOfExactType<ThemeControllerProvider>()!;
   }
 
   @override
   bool updateShouldNotify(ThemeControllerProvider oldWidget) {
     return themeMode != oldWidget.themeMode ||
-           fontFamily != oldWidget.fontFamily ||
-           primaryColor != oldWidget.primaryColor || 
-           spacingBase != oldWidget.spacingBase ||
-           baseFontSize != oldWidget.baseFontSize ||
-           scaleRatio != oldWidget.scaleRatio ||
-           fontWeight != oldWidget.fontWeight ||
-           letterSpacing != oldWidget.letterSpacing ||
-           borderRadius != oldWidget.borderRadius ||
-           elevation != oldWidget.elevation ||
-           borderWidth != oldWidget.borderWidth ||
-           borderColor != oldWidget.borderColor ||
-           opacity != oldWidget.opacity ||
-           blur != oldWidget.blur ||
-           useGradient != oldWidget.useGradient ||
-           isLintMode != oldWidget.isLintMode ||
-           currentMockState != oldWidget.currentMockState ||
-           gradientStartColor != oldWidget.gradientStartColor ||
-           gradientEndColor != oldWidget.gradientEndColor;
+        fontFamily != oldWidget.fontFamily ||
+        primaryColor != oldWidget.primaryColor ||
+        spacingBase != oldWidget.spacingBase ||
+        baseFontSize != oldWidget.baseFontSize ||
+        scaleRatio != oldWidget.scaleRatio ||
+        fontWeight != oldWidget.fontWeight ||
+        letterSpacing != oldWidget.letterSpacing ||
+        borderRadius != oldWidget.borderRadius ||
+        elevation != oldWidget.elevation ||
+        borderWidth != oldWidget.borderWidth ||
+        borderColor != oldWidget.borderColor ||
+        opacity != oldWidget.opacity ||
+        blur != oldWidget.blur ||
+        useGradient != oldWidget.useGradient ||
+        isLintMode != oldWidget.isLintMode ||
+        currentMockState != oldWidget.currentMockState ||
+        gradientStartColor != oldWidget.gradientStartColor ||
+        gradientEndColor != oldWidget.gradientEndColor;
   }
 }

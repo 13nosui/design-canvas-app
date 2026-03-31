@@ -31,5 +31,6 @@ class AppOpacity extends ThemeExtension<AppOpacity> {
 }
 
 extension AppOpacityExtension on BuildContext {
-  AppOpacity get appOpacity => Theme.of(this).extension<AppOpacity>() ?? AppOpacity.defaultOpacity;
+  AppOpacity get appOpacity =>
+      Theme.of(this).extension<AppOpacity>() ?? AppOpacity.defaultOpacity;
 }

@@ -39,7 +39,8 @@ class _SidebarMenuState extends State<SidebarMenu> {
               decoration: SidebarStyles.profileImageDecoration.copyWith(
                 image: DecorationImage(
                   // 外部画像の依存を排除し、ネットワークからフェッチ
-                  image: NetworkImage(state.userModel!.profilePic ?? 'https://via.placeholder.com/150'),
+                  image: NetworkImage(state.userModel!.profilePic ??
+                      'https://via.placeholder.com/150'),
                   fit: BoxFit.cover,
                 ),
               ),
@@ -54,23 +55,28 @@ class _SidebarMenuState extends State<SidebarMenu> {
                   ),
                   const SizedBox(width: SidebarStyles.displayVerifiedSpacing),
                   if (state.userModel!.isVerified ?? false)
-                    const Icon(Icons.verified, color: SidebarStyles.verifiedIconColor, size: SidebarStyles.verifiedIconSize),
+                    const Icon(Icons.verified,
+                        color: SidebarStyles.verifiedIconColor,
+                        size: SidebarStyles.verifiedIconSize),
                 ],
               ),
               subtitle: Text(
                 state.userModel!.userName,
                 style: SidebarStyles.userNameStyle,
               ),
-              trailing: const Icon(Icons.keyboard_arrow_down, color: SidebarStyles.arrowDownIconColor),
+              trailing: const Icon(Icons.keyboard_arrow_down,
+                  color: SidebarStyles.arrowDownIconColor),
             ),
             Container(
               alignment: Alignment.center,
               child: Row(
                 children: <Widget>[
                   const SizedBox(width: SidebarStyles.statPrefixWidth),
-                  _textButton(context, state.userModel!.getFollower, ' Followers'),
+                  _textButton(
+                      context, state.userModel!.getFollower, ' Followers'),
                   const SizedBox(width: SidebarStyles.statSpacing),
-                  _textButton(context, state.userModel!.getFollowing, ' Following'),
+                  _textButton(
+                      context, state.userModel!.getFollowing, ' Following'),
                 ],
               ),
             ),
@@ -98,7 +104,8 @@ class _SidebarMenuState extends State<SidebarMenu> {
     );
   }
 
-  ListTile _menuListRowButton(String title, {IconData? icon, bool isEnable = false}) {
+  ListTile _menuListRowButton(String title,
+      {IconData? icon, bool isEnable = false}) {
     return ListTile(
       onTap: () {},
       leading: icon == null
@@ -128,8 +135,10 @@ class _SidebarMenuState extends State<SidebarMenu> {
           children: <Widget>[
             _menuHeader(),
             const Divider(),
-            _menuListRowButton('Profile', icon: Icons.person_outline, isEnable: true),
-            _menuListRowButton('Bookmark', icon: Icons.bookmark_border, isEnable: true),
+            _menuListRowButton('Profile',
+                icon: Icons.person_outline, isEnable: true),
+            _menuListRowButton('Bookmark',
+                icon: Icons.bookmark_border, isEnable: true),
             _menuListRowButton('Lists', icon: Icons.list_alt),
             _menuListRowButton('Moments', icon: Icons.bolt),
             const Divider(),

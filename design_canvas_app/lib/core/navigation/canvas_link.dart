@@ -16,7 +16,7 @@ class CanvasLinkData {
 /// キャンバス全体でリンク情報を収集・管理するコントローラー
 class CanvasLinkRegistry extends ChangeNotifier {
   final Map<String, CanvasLinkData> _links = {}; // WidgetのhashCodeなどをキーにして重複を防ぐ
-  
+
   Map<String, CanvasLinkData> get links => Map.unmodifiable(_links);
 
   void registerLink(String key, CanvasLinkData data) {
@@ -26,9 +26,9 @@ class CanvasLinkRegistry extends ChangeNotifier {
         existing.sourceRoute == data.sourceRoute &&
         existing.targetRoute == data.targetRoute &&
         (existing.sourceCenter - data.sourceCenter).distance < 0.1) {
-      return; 
+      return;
     }
-    
+
     _links[key] = data;
     notifyListeners();
   }
@@ -42,7 +42,8 @@ class CanvasLinkRegistry extends ChangeNotifier {
   static CanvasLinkRegistry? maybeOf(BuildContext context) {
     // listen: false にするため、依存関係を登録しない getElementFor... を使用
     try {
-      final element = context.getElementForInheritedWidgetOfExactType<InheritedRegistry>();
+      final element =
+          context.getElementForInheritedWidgetOfExactType<InheritedRegistry>();
       return (element?.widget as InheritedRegistry?)?.registry;
     } catch (_) {
       return null;
@@ -80,7 +81,8 @@ class CurrentRouteProvider extends InheritedWidget {
 
   static String? maybeOf(BuildContext context) {
     try {
-      final element = context.getElementForInheritedWidgetOfExactType<CurrentRouteProvider>();
+      final element = context
+          .getElementForInheritedWidgetOfExactType<CurrentRouteProvider>();
       return (element?.widget as CurrentRouteProvider?)?.routePath;
     } catch (_) {
       return null;
@@ -88,7 +90,8 @@ class CurrentRouteProvider extends InheritedWidget {
   }
 
   @override
-  bool updateShouldNotify(CurrentRouteProvider oldWidget) => routePath != oldWidget.routePath;
+  bool updateShouldNotify(CurrentRouteProvider oldWidget) =>
+      routePath != oldWidget.routePath;
 }
 
 /// アプリ開発者が各画面のボタンなどをラップするためのWidget
@@ -130,11 +133,12 @@ class _CanvasLinkState extends State<CanvasLink> {
 
   void _registerPosition() {
     if (!mounted) return;
-    
-    final registryElement = context.getElementForInheritedWidgetOfExactType<InheritedRegistry>();
+
+    final registryElement =
+        context.getElementForInheritedWidgetOfExactType<InheritedRegistry>();
     final inheritedRegistry = registryElement?.widget as InheritedRegistry?;
     if (inheritedRegistry == null) return; // キャンバス外（本番環境など）では何もしない
-    
+
     final sourceRoute = CurrentRouteProvider.maybeOf(context);
     if (sourceRoute == null) return;
 

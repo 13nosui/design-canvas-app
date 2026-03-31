@@ -33,6 +33,7 @@ class _MyAppState extends State<MyApp> {
     super.initState();
     _fontFamily = widget.initialFontFamily ?? 'Noto Sans JP';
   }
+
   double _spacingBase = 8.0;
   double _baseFontSize = 16.0;
   double _scaleRatio = 1.25;

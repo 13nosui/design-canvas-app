@@ -45,5 +45,6 @@ class AppGradients extends ThemeExtension<AppGradients> {
 }
 
 extension AppGradientsExtension on BuildContext {
-  AppGradients get appGradients => Theme.of(this).extension<AppGradients>() ?? AppGradients.defaultGradients;
+  AppGradients get appGradients =>
+      Theme.of(this).extension<AppGradients>() ?? AppGradients.defaultGradients;
 }

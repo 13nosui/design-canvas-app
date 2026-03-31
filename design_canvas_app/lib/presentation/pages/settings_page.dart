@@ -14,7 +14,10 @@ class SettingsPage extends StatelessWidget {
         child: SingleChildScrollView(
           child: Text(
             'Settings',
-            style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.bold),
+            style: Theme.of(context)
+                .textTheme
+                .displaySmall
+                ?.copyWith(fontWeight: FontWeight.bold),
           ),
         ),
       ),

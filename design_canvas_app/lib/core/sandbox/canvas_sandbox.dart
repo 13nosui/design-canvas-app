@@ -20,7 +20,7 @@ class CanvasSandbox extends StatelessWidget {
       providers: [
         // インターフェースである `AuthState` に対して、`MockAuthState` の実装を供給する
         ChangeNotifierProvider<AuthState>(create: (_) => MockAuthState()),
-        
+
         // FeedとChatのモック状態を供給する
         ChangeNotifierProvider<FeedState>(create: (_) => MockFeedState()),
         ChangeNotifierProvider<ChatState>(create: (_) => MockChatState()),

@@ -16,7 +16,10 @@ class AppRouteDef {
   final List<String> linksTo; // ボタンではなく画面自体から矢印を引く場合の対象パス
   final String? filePath; // IDEで開くためのソースコードのパス
 
-  const AppRouteDef(this.path, this.name, this.builder, [
+  const AppRouteDef(
+    this.path,
+    this.name,
+    this.builder, [
     this.children = const [],
     this.linksTo = const [],
     this.filePath,
@@ -36,24 +39,44 @@ class AppRouteDef {
 // デザインキャンバスとアプリ本体の「Single Source of Truth」となるリスト
 final List<AppRouteDef> canvasRoutes = [
   // 例: Login画面からは、Home（'/'）へ遷移する
-  AppRouteDef('/login', 'Login', (c) => const LoginPage(), [], ['/'], 'lib/presentation/pages/login_page.dart'),
+  AppRouteDef('/login', 'Login', (c) => const LoginPage(), [], ['/'],
+      'lib/presentation/pages/login_page.dart'),
 
   // 例: Home画面からは、profileとtimelineへ遷移する
-  AppRouteDef('/', 'Home', (c) => const HomePage(), [
-    AppRouteDef('settings', 'Settings', (c) => const SettingsPage(), [], [], 'lib/presentation/pages/settings_page.dart'),
-  ], ['/profile', '/timeline'], 'lib/presentation/pages/home_page.dart'), // ← ここにリンク先を配列で追加
+  AppRouteDef(
+      '/',
+      'Home',
+      (c) => const HomePage(),
+      [
+        AppRouteDef('settings', 'Settings', (c) => const SettingsPage(), [], [],
+            'lib/presentation/pages/settings_page.dart'),
+      ],
+      ['/profile', '/timeline'],
+      'lib/presentation/pages/home_page.dart'), // ← ここにリンク先を配列で追加
 
-  AppRouteDef('/profile', 'profile', (c) => const Scaffold(body: Center(child: Text('Profile Page'))), [], [], 'lib/presentation/pages/profile_page.dart'),
-  AppRouteDef('/timeline', 'timeline', (c) => const Scaffold(body: Center(child: Text('Timeline Page'))), [], [], 'lib/presentation/pages/timeline_page.dart'),
+  AppRouteDef(
+      '/profile',
+      'profile',
+      (c) => const Scaffold(body: Center(child: Text('Profile Page'))),
+      [],
+      [],
+      'lib/presentation/pages/profile_page.dart'),
+  AppRouteDef(
+      '/timeline',
+      'timeline',
+      (c) => const Scaffold(body: Center(child: Text('Timeline Page'))),
+      [],
+      [],
+      'lib/presentation/pages/timeline_page.dart'),
 
   // サンドボックスを使ったTwitter CloneのSidebar (手動追加版)
   AppRouteDef(
-    '/sandbox/sidebar', 
-    'Twitter Clone Sidebar\n(Canvas Sandbox)', 
-    (c) => const CanvasSandbox(child: SidebarMenu()), 
-    [], [], 
-    'lib/ui/page/common/sidebar.dart'
-  ),
+      '/sandbox/sidebar',
+      'Twitter Clone Sidebar\n(Canvas Sandbox)',
+      (c) => const CanvasSandbox(child: SidebarMenu()),
+      [],
+      [],
+      'lib/ui/page/common/sidebar.dart'),
 
   // ==========================================
   // 自動走査（スキャン）された未確認ページのルート群

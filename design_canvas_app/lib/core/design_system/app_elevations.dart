@@ -31,5 +31,7 @@ class AppElevations extends ThemeExtension<AppElevations> {
 }
 
 extension AppElevationsExtension on BuildContext {
-  AppElevations get appElevations => Theme.of(this).extension<AppElevations>() ?? AppElevations.defaultElevations;
+  AppElevations get appElevations =>
+      Theme.of(this).extension<AppElevations>() ??
+      AppElevations.defaultElevations;
 }

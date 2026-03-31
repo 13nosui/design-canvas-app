@@ -31,5 +31,6 @@ class AppBlur extends ThemeExtension<AppBlur> {
 }
 
 extension AppBlurExtension on BuildContext {
-  AppBlur get appBlur => Theme.of(this).extension<AppBlur>() ?? AppBlur.defaultBlur;
+  AppBlur get appBlur =>
+      Theme.of(this).extension<AppBlur>() ?? AppBlur.defaultBlur;
 }

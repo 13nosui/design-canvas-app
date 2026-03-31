@@ -31,5 +31,6 @@ class AppShapes extends ThemeExtension<AppShapes> {
 }
 
 extension AppShapesExtension on BuildContext {
-  AppShapes get appShapes => Theme.of(this).extension<AppShapes>() ?? AppShapes.defaultShapes;
+  AppShapes get appShapes =>
+      Theme.of(this).extension<AppShapes>() ?? AppShapes.defaultShapes;
 }

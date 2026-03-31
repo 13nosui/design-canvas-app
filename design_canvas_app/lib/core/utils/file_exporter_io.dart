@@ -1,6 +1,15 @@
 import 'dart:io';
 
-void saveFilesToDisk({required String colorsCode, required String spacingCode, required String typographyCode, required String shapesCode, required String elevationsCode, required String bordersCode, required String opacityCode, required String blurCode, required String gradientsCode}) {
+void saveFilesToDisk(
+    {required String colorsCode,
+    required String spacingCode,
+    required String typographyCode,
+    required String shapesCode,
+    required String elevationsCode,
+    required String bordersCode,
+    required String opacityCode,
+    required String blurCode,
+    required String gradientsCode}) {
   final colorFile = File('lib/core/design_system/app_colors.dart');
   final spacingFile = File('lib/core/design_system/app_spacing.dart');
   final typographyFile = File('lib/core/design_system/app_typography.dart');
@@ -14,17 +23,17 @@ void saveFilesToDisk({required String colorsCode, required String spacingCode, r
   if (colorFile.existsSync() && spacingFile.existsSync()) {
     colorFile.writeAsStringSync(colorsCode);
     spacingFile.writeAsStringSync(spacingCode);
-    
+
     if (!typographyFile.existsSync()) {
       typographyFile.createSync(recursive: true);
     }
     typographyFile.writeAsStringSync(typographyCode);
-    
+
     if (!shapesFile.existsSync()) {
       shapesFile.createSync(recursive: true);
     }
     shapesFile.writeAsStringSync(shapesCode);
-    
+
     if (!elevationsFile.existsSync()) {
       elevationsFile.createSync(recursive: true);
     }
@@ -50,6 +59,7 @@ void saveFilesToDisk({required String colorsCode, required String spacingCode, r
     }
     gradientsFile.writeAsStringSync(gradientsCode);
   } else {
-    throw Exception('Files not found. Ensure you are running from the project root.');
+    throw Exception(
+        'Files not found. Ensure you are running from the project root.');
   }
 }

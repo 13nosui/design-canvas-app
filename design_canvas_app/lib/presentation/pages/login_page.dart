@@ -14,7 +14,10 @@ class LoginPage extends StatelessWidget {
         child: SingleChildScrollView(
           child: Text(
             'Login',
-            style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.bold),
+            style: Theme.of(context)
+                .textTheme
+                .displaySmall
+                ?.copyWith(fontWeight: FontWeight.bold),
           ),
         ),
       ),

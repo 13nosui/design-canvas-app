@@ -25,13 +25,15 @@ class MyCustomCard extends StatelessWidget {
       width: 250,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(context.appShapes.borderRadius),
-        boxShadow: context.appElevations.elevation > 0 ? [
-          BoxShadow(
-            color: Theme.of(context).shadowColor.withOpacity(0.08),
-            blurRadius: context.appElevations.elevation * 3,
-            offset: Offset(0, context.appElevations.elevation * 1.5),
-          ),
-        ] : null,
+        boxShadow: context.appElevations.elevation > 0
+            ? [
+                BoxShadow(
+                  color: Theme.of(context).shadowColor.withOpacity(0.08),
+                  blurRadius: context.appElevations.elevation * 3,
+                  offset: Offset(0, context.appElevations.elevation * 1.5),
+                ),
+              ]
+            : null,
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(context.appShapes.borderRadius),
@@ -43,21 +45,28 @@ class MyCustomCard extends StatelessWidget {
           child: Container(
             padding: EdgeInsets.all(context.appSpacing.m),
             decoration: BoxDecoration(
-              color: context.appGradients.useGradient ? null : context.appColors.surface.withOpacity(context.appOpacity.opacity),
+              color: context.appGradients.useGradient
+                  ? null
+                  : context.appColors.surface
+                      .withOpacity(context.appOpacity.opacity),
               gradient: context.appGradients.useGradient
                   ? LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        context.appGradients.startColor.withOpacity(context.appOpacity.opacity),
-                        context.appGradients.endColor.withOpacity(context.appOpacity.opacity),
+                        context.appGradients.startColor
+                            .withOpacity(context.appOpacity.opacity),
+                        context.appGradients.endColor
+                            .withOpacity(context.appOpacity.opacity),
                       ],
                     )
                   : null,
-              border: context.appBorders.borderWidth > 0 ? Border.all(
-                color: context.appBorders.borderColor,
-                width: context.appBorders.borderWidth,
-              ) : null,
+              border: context.appBorders.borderWidth > 0
+                  ? Border.all(
+                      color: context.appBorders.borderColor,
+                      width: context.appBorders.borderWidth,
+                    )
+                  : null,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

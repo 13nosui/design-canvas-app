@@ -23,7 +23,8 @@ class HomePage extends StatelessWidget {
           children: [
             Icon(Icons.inbox, size: 60, color: Colors.grey),
             SizedBox(height: 16),
-            Text('データがありません', style: TextStyle(color: Colors.grey, fontSize: 16)),
+            Text('データがありません',
+                style: TextStyle(color: Colors.grey, fontSize: 16)),
           ],
         );
         break;
@@ -33,7 +34,11 @@ class HomePage extends StatelessWidget {
           children: [
             Icon(Icons.warning_amber_rounded, size: 60, color: Colors.red),
             SizedBox(height: 16),
-            Text('エラーが発生しました', style: TextStyle(color: Colors.red, fontSize: 16, fontWeight: FontWeight.bold)),
+            Text('エラーが発生しました',
+                style: TextStyle(
+                    color: Colors.red,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold)),
           ],
         );
         break;
@@ -44,7 +49,10 @@ class HomePage extends StatelessWidget {
             children: [
               Text(
                 'Home',
-                style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.bold),
+                style: Theme.of(context)
+                    .textTheme
+                    .displaySmall
+                    ?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 24),
               CanvasLink(
@@ -56,11 +64,12 @@ class HomePage extends StatelessWidget {
                   },
                 ),
               ),
-
               const SizedBox(height: 32),
               const Divider(),
               const SizedBox(height: 16),
-              const Text('⚠️ 今度こそ！おーまいハッハッハ。Visual Linter Test:', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+              const Text('⚠️ 今度こそ！おーまいハッハッハ。Visual Linter Test:',
+                  style: TextStyle(
+                      color: Colors.grey, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               LinterWrapper(
                 isCompliant: false,
@@ -73,7 +82,8 @@ class HomePage extends StatelessWidget {
                       color: const Color(0xFF123456),
                       borderRadius: BorderRadius.circular(15.0),
                     ),
-                    child: const Text('Bad Button (Magic Numbers)', style: TextStyle(color: Colors.white)),
+                    child: const Text('Bad Button (Magic Numbers)',
+                        style: TextStyle(color: Colors.white)),
                   ),
                 ),
               ),

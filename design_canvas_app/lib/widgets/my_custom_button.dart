@@ -26,60 +26,71 @@ class MyCustomButton extends StatelessWidget {
       isCompliant: true,
       child: Material(
         color: Colors.transparent,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(context.appShapes.borderRadius),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(context.appShapes.borderRadius),
-            boxShadow: context.appElevations.elevation > 0 ? [
-              BoxShadow(
-                color: Theme.of(context).shadowColor.withOpacity(0.2),
-                blurRadius: context.appElevations.elevation * 2,
-                offset: Offset(0, context.appElevations.elevation),
-              ),
-            ] : null,
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(context.appShapes.borderRadius),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(
-                sigmaX: context.appBlur.blur,
-                sigmaY: context.appBlur.blur,
-              ),
-              child: Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: context.appSpacing.l,
-                  vertical: context.appSpacing.m,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(context.appShapes.borderRadius),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius:
+                  BorderRadius.circular(context.appShapes.borderRadius),
+              boxShadow: context.appElevations.elevation > 0
+                  ? [
+                      BoxShadow(
+                        color: Theme.of(context).shadowColor.withOpacity(0.2),
+                        blurRadius: context.appElevations.elevation * 2,
+                        offset: Offset(0, context.appElevations.elevation),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: ClipRRect(
+              borderRadius:
+                  BorderRadius.circular(context.appShapes.borderRadius),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(
+                  sigmaX: context.appBlur.blur,
+                  sigmaY: context.appBlur.blur,
                 ),
-                decoration: BoxDecoration(
-                  color: context.appGradients.useGradient ? null : context.appColors.primary.withOpacity(context.appOpacity.opacity),
-                  gradient: context.appGradients.useGradient
-                      ? LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            context.appGradients.startColor.withOpacity(context.appOpacity.opacity),
-                            context.appGradients.endColor.withOpacity(context.appOpacity.opacity),
-                          ],
-                        )
-                      : null,
-                  border: context.appBorders.borderWidth > 0 ? Border.all(
-                    color: context.appBorders.borderColor,
-                    width: context.appBorders.borderWidth,
-                  ) : null,
-                ),
-                child: Text(
-                  text,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: context.appSpacing.l,
+                    vertical: context.appSpacing.m,
+                  ),
+                  decoration: BoxDecoration(
+                    color: context.appGradients.useGradient
+                        ? null
+                        : context.appColors.primary
+                            .withOpacity(context.appOpacity.opacity),
+                    gradient: context.appGradients.useGradient
+                        ? LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              context.appGradients.startColor
+                                  .withOpacity(context.appOpacity.opacity),
+                              context.appGradients.endColor
+                                  .withOpacity(context.appOpacity.opacity),
+                            ],
+                          )
+                        : null,
+                    border: context.appBorders.borderWidth > 0
+                        ? Border.all(
+                            color: context.appBorders.borderColor,
+                            width: context.appBorders.borderWidth,
+                          )
+                        : null,
+                  ),
+                  child: Text(
+                    text,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
         ),
       ),
     );
