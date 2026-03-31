@@ -12,6 +12,7 @@ import '../../app/router.dart';
 import '../../core/utils/file_exporter_stub.dart' if (dart.library.io) '../../core/utils/file_exporter_io.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../widgets/property_field_editor.dart';
 
 enum PreviewMode {
   free,
@@ -31,6 +32,10 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
   PreviewMode _previewMode = PreviewMode.free;
   bool _showBackgroundDecor = true;
   bool _showConnectors = true;
+
+  bool _isPanelOpen = false;
+  double _inspectorWidth = 320.0;
+  bool _isDragging = false;
 
   List<dynamic> _inspectedFields = [];
   String? _inspectedFilePath;
@@ -119,9 +124,8 @@ class _DesignCanvasPageState extends State<DesignCanvasPage> with SingleTickerPr
       _isInspectorLoading = true;
       _inspectedFilePath = stylesPath;
       _inspectedFields = [];
+      _isPanelOpen = true;
     });
-    
-    _scaffoldKey.currentState?.openEndDrawer();
 
     try {
       final res = await http.get(Uri.parse('http://localhost:8080/inspector/parse?path=$stylesPath'));
@@ -884,13 +888,10 @@ extension AppTypographyExtension on BuildContext {
    );
   }
 
-  // 右側に引き出される「ライブ・スタイル・エディタ」の構築
-  Widget _buildLiveEditorDrawer(BuildContext context) {
-    // ThemeControllerProviderの値を監視して即時再描画
+  // 右側に引き出される「ライブ・スタイル・エディタ」の構築（Figmaライクな固定パネル）
+  Widget _buildLiveEditorPanel(BuildContext context) {
     final themeController = ThemeControllerProvider.of(context);
-    
-    // Flutter標準の18色のプライマリーカラー一覧
-    final List<Color> paletteColors = [
+    final paletteColors = [
       Colors.red, Colors.pink, Colors.purple, Colors.deepPurple,
       Colors.indigo, Colors.blue, Colors.lightBlue, Colors.cyan,
       Colors.teal, Colors.green, Colors.lightGreen, Colors.lime,
@@ -898,15 +899,15 @@ extension AppTypographyExtension on BuildContext {
       Colors.brown, Colors.blueGrey, Colors.grey,
     ];
 
-    return Drawer(
-      width: 320,
+    return Container(
+      color: Theme.of(context).colorScheme.surface, // Figma-like background
       child: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 80.0), // スクロール最下部でのボタンの押しやすさを確保
+          padding: const EdgeInsets.only(bottom: 80.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-            if (_inspectedFilePath != null) _buildPropertyInspectorPanel(),
+            if (_inspectedFilePath != null) _buildPropertyInspectorPanel(context),
             if (_inspectedFilePath != null) const Divider(thickness: 4),
             const Padding(
               padding: EdgeInsets.all(20.0),
@@ -970,441 +971,249 @@ extension AppTypographyExtension on BuildContext {
                 ],
               ),
             ),
-            const Divider(),
-            
-            // --- Color Picker ---
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
-              child: Text('Primary Color', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+            // ==========================================
+            // 高密度な Figmaライク・インスペクター
+            // ==========================================
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.05),
+              child: const Text('GLOBAL APP TOKENS', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 11, letterSpacing: 1.2)),
             ),
+
+            // --- Colors ---
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: paletteColors.map((color) {
-                  final isSelected = themeController.primaryColor.value == color.value;
-                  return GestureDetector(
-                    onTap: () => themeController.updateTheme(primary: color),
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                        border: isSelected ? Border.all(color: Theme.of(context).colorScheme.onSurface, width: 3) : null,
-                        boxShadow: [
-                          BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 4, offset: const Offset(0, 2))
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-            
-            const SizedBox(height: 32),
-            const Divider(),
-            
-            // --- Spacing Slider ---
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
-              child: Text('Spacing Base Level', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              // 現在の値から割り出したSMLの一覧を表示
-              child: Text(
-                'Current Base: ${themeController.spacingBase.toStringAsFixed(1)}px\n\n'
-                '• S (Small): ${themeController.spacingBase.toStringAsFixed(1)}px\n'
-                '• M (Medium): ${(themeController.spacingBase * 2).toStringAsFixed(1)}px\n'
-                '• L (Large): ${(themeController.spacingBase * 3).toStringAsFixed(1)}px',
-                style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.87), height: 1.4),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Slider(
-              value: themeController.spacingBase,
-              min: 4.0,
-              max: 24.0,
-              divisions: 20,
-              label: '${themeController.spacingBase.toStringAsFixed(1)} px',
-              onChanged: (val) {
-                // スライダーを動かした瞬間にThemeControllerに通知が行き、即座にリビルド連鎖が起きる
-                themeController.updateTheme(spacing: val);
-              },
-            ),
-            const SizedBox(height: 32),
-            const Divider(),
-            
-            // --- Shapes ---
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
-              child: Text('Border Radius', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Text(
-                'Current Radius: ${themeController.borderRadius.toStringAsFixed(1)}px',
-                style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.87), height: 1.4),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Slider(
-              value: themeController.borderRadius,
-              min: 0.0,
-              max: 40.0,
-              divisions: 80,
-              label: '${themeController.borderRadius.toStringAsFixed(1)} px',
-              onChanged: (val) {
-                themeController.updateTheme(radius: val);
-              },
-            ),
-            const SizedBox(height: 32),
-            const Divider(),
-            
-            // --- Elevations ---
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
-              child: Text('Elevation / Shadow', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Text(
-                'Current Elevation: ${themeController.elevation.toStringAsFixed(1)}',
-                style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.87), height: 1.4),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Slider(
-              value: themeController.elevation,
-              min: 0.0,
-              max: 24.0,
-              divisions: 24,
-              label: themeController.elevation.toStringAsFixed(1),
-              onChanged: (val) {
-                themeController.updateTheme(elevation: val);
-              },
-            ),
-            const SizedBox(height: 32),
-            const Divider(),
-            
-            // --- Borders ---
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
-              child: Text('Border Width', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Text(
-                'Current Border: ${themeController.borderWidth.toStringAsFixed(1)}px',
-                style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.87), height: 1.4),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Slider(
-              value: themeController.borderWidth,
-              min: 0.0,
-              max: 8.0,
-              divisions: 16,
-              label: '${themeController.borderWidth.toStringAsFixed(1)} px',
-              onChanged: (val) {
-                themeController.updateTheme(borderWidth: val);
-              },
-            ),
-            const SizedBox(height: 16),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
-              child: Text('Border Color', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Wrap(
-                spacing: 12,
-                runSpacing: 12,
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Theme.of(context).colorScheme.onSurface, // Text color basically (black/white)
-                  ...paletteColors
-                ].map((color) {
-                  final isSelected = themeController.borderColor.value == color.value;
-                  return GestureDetector(
-                    onTap: () => themeController.updateTheme(borderColor: color),
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                        border: isSelected ? Border.all(color: Theme.of(context).colorScheme.primary, width: 3) : Border.all(color: Colors.grey.withOpacity(0.5)),
-                        boxShadow: [
-                          BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 4, offset: const Offset(0, 2))
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
+                  PropertyFieldEditor(
+                    label: 'Primary Color',
+                    initialValue: 'Color(0x${themeController.primaryColor.value.toRadixString(16).padLeft(8, '0').toUpperCase()})',
+                    isAppToken: true,
+                    onSubmit: (v) {
+                      final match = RegExp(r'Color\(0x([a-fA-F0-9]{8})\)').firstMatch(v);
+                      if (match != null) themeController.updateTheme(primary: Color(int.parse(match.group(1)!, radix: 16)));
+                    },
+                  ),
+                  const SizedBox(height: 6),
+                  // Tiny document colors
+                  Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: paletteColors.map((color) {
+                      final isSelected = themeController.primaryColor.value == color.value;
+                      return GestureDetector(
+                        onTap: () => themeController.updateTheme(primary: color),
+                        child: Container(
+                          width: 14,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: color,
+                            borderRadius: BorderRadius.circular(2),
+                            border: Border.all(color: isSelected ? Theme.of(context).colorScheme.onSurface : Colors.black12, width: isSelected ? 2 : 1),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 32),
-            const Divider(),
+            const Divider(height: 1),
 
-            // --- Opacity ---
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
-              child: Text('Opacity', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-            ),
+            // --- Layout & Spacing ---
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Text(
-                'Current Opacity: ${(themeController.opacity * 100).toStringAsFixed(0)}%',
-                style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.87), height: 1.4),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Slider(
-              value: themeController.opacity,
-              min: 0.0,
-              max: 1.0,
-              divisions: 20,
-              label: '${(themeController.opacity * 100).toStringAsFixed(0)} %',
-              onChanged: (val) {
-                themeController.updateTheme(opacity: val);
-              },
-            ),
-            const SizedBox(height: 32),
-            const Divider(),
-
-            // --- Backdrop Blur ---
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
-              child: Text('Backdrop Blur', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Text(
-                'Current Blur: ${themeController.blur.toStringAsFixed(1)}px',
-                style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.87), height: 1.4),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Slider(
-              value: themeController.blur,
-              min: 0.0,
-              max: 20.0,
-              divisions: 40,
-              label: '${themeController.blur.toStringAsFixed(1)} px',
-              onChanged: (val) {
-                themeController.updateTheme(blur: val);
-              },
-            ),
-            const SizedBox(height: 32),
-            const Divider(),
-
-            // --- Gradients ---
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: Column(
                 children: [
-                  const Text('Use Gradient', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-                  Switch(
-                    value: themeController.useGradient,
-                    onChanged: (val) {
-                      themeController.updateTheme(useGradient: val);
+                  PropertyFieldEditor(
+                    label: 'Spacing Base',
+                    initialValue: themeController.spacingBase.toStringAsFixed(1),
+                    isAppToken: true,
+                    onSubmit: (v) {
+                      final match = RegExp(r'(\d+\.\d+)').firstMatch(v) ?? RegExp(r'(\d+)').firstMatch(v);
+                      if (match != null) themeController.updateTheme(spacing: double.tryParse(match.group(1)!));
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  PropertyFieldEditor(
+                    label: 'Border Radius',
+                    initialValue: themeController.borderRadius.toStringAsFixed(1),
+                    isAppToken: true,
+                    onSubmit: (v) {
+                      final match = RegExp(r'(\d+\.\d+)').firstMatch(v) ?? RegExp(r'(\d+)').firstMatch(v);
+                      if (match != null) themeController.updateTheme(radius: double.tryParse(match.group(1)!));
                     },
                   ),
                 ],
               ),
             ),
-            if (themeController.useGradient) ...[
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
-                child: Text('Gradient Start Color', style: TextStyle(fontSize: 14)),
+            const Divider(height: 1),
+
+            // --- Effects & Borders ---
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: Column(
+                children: [
+                  PropertyFieldEditor(
+                    label: 'Elevation',
+                    initialValue: themeController.elevation.toStringAsFixed(1),
+                    isAppToken: true,
+                    onSubmit: (v) {
+                      final match = RegExp(r'(\d+\.\d+)').firstMatch(v) ?? RegExp(r'(\d+)').firstMatch(v);
+                      if (match != null) themeController.updateTheme(elevation: double.tryParse(match.group(1)!));
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  PropertyFieldEditor(
+                    label: 'Border Width',
+                    initialValue: themeController.borderWidth.toStringAsFixed(1),
+                    isAppToken: true,
+                    onSubmit: (v) {
+                      final match = RegExp(r'(\d+\.\d+)').firstMatch(v) ?? RegExp(r'(\d+)').firstMatch(v);
+                      if (match != null) themeController.updateTheme(borderWidth: double.tryParse(match.group(1)!));
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  PropertyFieldEditor(
+                    label: 'Border Color',
+                    initialValue: 'Color(0x${themeController.borderColor.value.toRadixString(16).padLeft(8, '0').toUpperCase()})',
+                    isAppToken: true,
+                    onSubmit: (v) {
+                      final match = RegExp(r'Color\(0x([a-fA-F0-9]{8})\)').firstMatch(v);
+                      if (match != null) themeController.updateTheme(borderColor: Color(int.parse(match.group(1)!, radix: 16)));
+                    },
+                  ),
+                ],
               ),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: Row(
-                  children: [
-                    Colors.black,
-                    Colors.white,
-                    Colors.grey,
-                    ...Colors.primaries,
-                  ].map((color) {
-                    return GestureDetector(
-                      onTap: () {
-                        themeController.updateTheme(gradientStartColor: color);
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.only(right: 12),
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: themeController.gradientStartColor.value == color.value ? Colors.white : Colors.transparent,
-                            width: 3,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
+            ),
+            const Divider(height: 1),
+
+            // --- Filters ---
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: Column(
+                children: [
+                  PropertyFieldEditor(
+                    label: 'Opacity',
+                    initialValue: themeController.opacity.toStringAsFixed(2),
+                    isAppToken: true,
+                    onSubmit: (v) {
+                      final match = RegExp(r'(\d+\.\d+)').firstMatch(v) ?? RegExp(r'(\d+)').firstMatch(v);
+                      if (match != null) themeController.updateTheme(opacity: double.tryParse(match.group(1)!));
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  PropertyFieldEditor(
+                    label: 'Backdrop Blur',
+                    initialValue: themeController.blur.toStringAsFixed(1),
+                    isAppToken: true,
+                    onSubmit: (v) {
+                      final match = RegExp(r'(\d+\.\d+)').firstMatch(v) ?? RegExp(r'(\d+)').firstMatch(v);
+                      if (match != null) themeController.updateTheme(blur: double.tryParse(match.group(1)!));
+                    },
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
-                child: Text('Gradient End Color', style: TextStyle(fontSize: 14)),
-              ),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: Row(
-                  children: [
-                    Colors.black,
-                    Colors.white,
-                    Colors.grey,
-                    ...Colors.primaries,
-                  ].map((color) {
-                    return GestureDetector(
-                      onTap: () {
-                        themeController.updateTheme(gradientEndColor: color);
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.only(right: 12),
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: themeController.gradientEndColor.value == color.value ? Colors.white : Colors.transparent,
-                            width: 3,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
-            const SizedBox(height: 32),
-            const Divider(),
+            ),
+            const Divider(height: 1),
 
             // --- Typography ---
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
-              child: Text('Typography', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.05),
+              child: const Text('TYPOGRAPHY', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 11, letterSpacing: 1.2)),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: DropdownButtonFormField<String>(
-                value: themeController.fontFamily,
-                decoration: const InputDecoration(
-                  labelText: 'Google Font',
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                ),
-                items: [
-                  if (themeController.fontFamily == 'Ahem')
-                    const DropdownMenuItem(value: 'Ahem', child: Text('Ahem (Test)')),
-                  const DropdownMenuItem(value: 'Noto Sans JP', child: Text('Noto Sans JP (Default)')),
-                  const DropdownMenuItem(value: 'Roboto', child: Text('Roboto')),
-                  const DropdownMenuItem(value: 'Montserrat', child: Text('Montserrat')),
-                  const DropdownMenuItem(value: 'Playfair Display', child: Text('Playfair Display')),
-                  const DropdownMenuItem(value: 'Lora', child: Text('Lora')),
-                  const DropdownMenuItem(value: 'Oswald', child: Text('Oswald')),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      const Expanded(
+                        flex: 4,
+                        child: Text('Font Family', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black54)),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        flex: 6,
+                        child: Container(
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              isExpanded: true,
+                              value: themeController.fontFamily,
+                              iconSize: 16,
+                              style: TextStyle(fontFamily: 'monospace', fontSize: 11, color: Theme.of(context).colorScheme.primary),
+                              padding: const EdgeInsets.symmetric(horizontal: 6),
+                              items: [
+                                if (themeController.fontFamily == 'Ahem')
+                                  const DropdownMenuItem(value: 'Ahem', child: Text('Ahem (Test)')),
+                                const DropdownMenuItem(value: 'Noto Sans JP', child: Text('Noto Sans (Default)')),
+                                const DropdownMenuItem(value: 'Roboto', child: Text('Roboto')),
+                                const DropdownMenuItem(value: 'Montserrat', child: Text('Montserrat')),
+                                const DropdownMenuItem(value: 'Playfair Display', child: Text('Playfair')),
+                                const DropdownMenuItem(value: 'Lora', child: Text('Lora')),
+                                const DropdownMenuItem(value: 'Oswald', child: Text('Oswald')),
+                              ],
+                              onChanged: (val) {
+                                if (val != null) themeController.updateTheme(font: val);
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  PropertyFieldEditor(
+                    label: 'Base Size',
+                    initialValue: themeController.baseFontSize.toStringAsFixed(1),
+                    isAppToken: true,
+                    onSubmit: (v) {
+                      final match = RegExp(r'(\d+\.\d+)').firstMatch(v) ?? RegExp(r'(\d+)').firstMatch(v);
+                      if (match != null) themeController.updateTheme(fontSize: double.tryParse(match.group(1)!));
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  PropertyFieldEditor(
+                    label: 'Scale Ratio',
+                    initialValue: themeController.scaleRatio.toStringAsFixed(2),
+                    isAppToken: true,
+                    onSubmit: (v) {
+                      final match = RegExp(r'(\d+\.\d+)').firstMatch(v) ?? RegExp(r'(\d+)').firstMatch(v);
+                      if (match != null) themeController.updateTheme(ratio: double.tryParse(match.group(1)!));
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  PropertyFieldEditor(
+                    label: 'Font Weight',
+                    initialValue: themeController.fontWeight.toDouble().toStringAsFixed(1),
+                    isAppToken: true,
+                    onSubmit: (v) {
+                      final match = RegExp(r'(\d+\.\d+)').firstMatch(v) ?? RegExp(r'(\d+)').firstMatch(v);
+                      if (match != null) themeController.updateTheme(weight: double.tryParse(match.group(1)!)?.toInt());
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  PropertyFieldEditor(
+                    label: 'Letter Spacing',
+                    initialValue: themeController.letterSpacing.toStringAsFixed(1),
+                    isAppToken: true,
+                    onSubmit: (v) {
+                      // Letter spacing can be negative, so allow leading -
+                      final match = RegExp(r'(-?\d+\.\d+)').firstMatch(v) ?? RegExp(r'(-?\d+)').firstMatch(v);
+                      if (match != null) themeController.updateTheme(letterSpace: double.tryParse(match.group(1)!));
+                    },
+                  ),
                 ],
-                onChanged: (val) {
-                  if (val != null) {
-                    themeController.updateTheme(font: val);
-                  }
-                },
               ),
             ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Text(
-                'Base Size (Body): ${themeController.baseFontSize.toStringAsFixed(1)}px\n'
-                'Scale Ratio: ${themeController.scaleRatio.toStringAsFixed(3)}x',
-                style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.87), height: 1.4),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Text('Base Font Size:', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))),
-            ),
-            Slider(
-              value: themeController.baseFontSize,
-              min: 12.0,
-              max: 24.0,
-              divisions: 12,
-              label: '${themeController.baseFontSize.toStringAsFixed(1)} px',
-              onChanged: (val) {
-                themeController.updateTheme(fontSize: val);
-              },
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Text('Scale Ratio:', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))),
-            ),
-            Slider(
-              value: themeController.scaleRatio,
-              min: 1.0,
-              max: 1.618,
-              divisions: 62, // roughly 0.01 increments
-              label: '${themeController.scaleRatio.toStringAsFixed(3)}x',
-              onChanged: (val) {
-                themeController.updateTheme(ratio: val);
-              },
-            ),
 
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Text('Font Weight:', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))),
-            ),
-            Slider(
-              value: themeController.fontWeight.toDouble(),
-              min: 100.0,
-              max: 900.0,
-              divisions: 8, // 100, 200, ... 900
-              label: 'w${themeController.fontWeight}',
-              onChanged: (val) {
-                themeController.updateTheme(weight: val.toInt());
-              },
-            ),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Text('Letter Spacing:', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))),
-            ),
-            Slider(
-              value: themeController.letterSpacing,
-              min: -2.0,
-              max: 10.0,
-              divisions: 120, // 0.1 increments
-              label: '${themeController.letterSpacing.toStringAsFixed(1)}px',
-              onChanged: (val) {
-                themeController.updateTheme(letterSpace: val);
-              },
-            ),
 
             const SizedBox(height: 32),
             const Divider(),
@@ -1532,7 +1341,7 @@ extension AppTypographyExtension on BuildContext {
     );
   }
 
-  Widget _buildPropertyInspectorPanel() {
+  Widget _buildPropertyInspectorPanel(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1560,69 +1369,55 @@ extension AppTypographyExtension on BuildContext {
             final valueStr = field['value'];
             final candidateName = field['candidateName'];
 
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey.withOpacity(0.2)))),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: isAppToken ? Theme.of(context).colorScheme.primary.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          isAppToken ? 'Token Linked' : 'Custom Value',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: isAppToken ? Theme.of(context).colorScheme.primary : Colors.deepOrange,
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey.withOpacity(0.1)))),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Expanded(
+                                child: PropertyFieldEditor(
+                                  label: name,
+                                  initialValue: valueStr,
+                                  isAppToken: isAppToken,
+                                  onSubmit: (newVal) => _updateStyleField(name, newVal),
+                                ),
+                              ),
+                              if (isAppToken)
+                                Container(
+                                  margin: const EdgeInsets.only(left: 8),
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Icon(Icons.link, size: 12, color: Theme.of(context).colorScheme.primary),
+                                ),
+                            ],
                           ),
-                        ),
+                          if (isCandidate) ...[
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 24,
+                              child: ElevatedButton.icon(
+                                icon: const Icon(Icons.upgrade, size: 12),
+                                label: Text('Promote to $candidateName', style: const TextStyle(fontSize: 10)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Theme.of(context).colorScheme.primary,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                ),
+                                onPressed: () => _promoteToken(name, candidateName, valueStr),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  if (isAppToken)
-                    Text(valueStr, style: TextStyle(fontFamily: 'monospace', fontSize: 12, color: Theme.of(context).colorScheme.onSurface))
-                  else
-                    // ドラッグによるリアルタイムではなくエンターキー更新（テキストフィールド）
-                    TextFormField(
-                      initialValue: valueStr,
-                      style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-                      decoration: InputDecoration(
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(4)),
-                        hintText: 'Press Enter to save',
-                      ),
-                      onFieldSubmitted: (newVal) => _updateStyleField(name, newVal),
-                    ),
-                    
-                  if (isCandidate) ...[
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.upgrade, size: 16),
-                        label: Text('Promote to AppTokens.$candidateName', style: const TextStyle(fontSize: 12)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.primary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                        ),
-                        onPressed: () => _promoteToken(name, candidateName, valueStr),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            );
+                    );
           }).toList(),
       ],
     );
@@ -1651,6 +1446,7 @@ extension AppTypographyExtension on BuildContext {
 
     return Scaffold(
       key: _scaffoldKey,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
         title: const Text('Design Canvas'),
         elevation: 1,
@@ -1687,9 +1483,11 @@ extension AppTypographyExtension on BuildContext {
             builder: (context) {
               return IconButton(
                 icon: const Icon(Icons.palette_outlined),
-                tooltip: 'Live Style Editor',
+                tooltip: 'Toggle Properties Panel',
                 onPressed: () {
-                  Scaffold.of(context).openEndDrawer();
+                  setState(() {
+                    _isPanelOpen = !_isPanelOpen;
+                  });
                 },
               );
             }
@@ -1697,27 +1495,29 @@ extension AppTypographyExtension on BuildContext {
           const SizedBox(width: 8),
         ],
       ),
-      endDrawer: _buildLiveEditorDrawer(context), // 右側のサイドパネル
-      body: InteractiveViewer(
-        transformationController: _transformationController,
-        boundaryMargin: const EdgeInsets.all(double.infinity),
-        minScale: 0.05,
-        maxScale: 3.0,
-        constrained: false,
-        child: SizedBox(
-          width: 8000,
-          height: 3000,
-          child: InheritedRegistry(
-            registry: _linkRegistry,
-            canvasKey: _canvasKey,
-            child: Stack(
-              key: _canvasKey,
-              children: [
-              Positioned.fill(
-                child: Container(
-                  color: Theme.of(context).scaffoldBackgroundColor,
-                ),
-              ),
+      body: Row(
+        children: [
+          Expanded(
+            child: InteractiveViewer(
+              transformationController: _transformationController,
+              boundaryMargin: const EdgeInsets.all(double.infinity),
+              minScale: 0.05,
+              maxScale: 3.0,
+              constrained: false,
+              child: SizedBox(
+                width: 8000,
+                height: 3000,
+                child: InheritedRegistry(
+                  registry: _linkRegistry,
+                  canvasKey: _canvasKey,
+                  child: Stack(
+                    key: _canvasKey,
+                    children: [
+                    Positioned.fill(
+                      child: Container(
+                        color: Theme.of(context).scaffoldBackgroundColor,
+                      ),
+                    ),
               if (_showBackgroundDecor)
                 Positioned.fill(
                   child: Stack(
@@ -1845,8 +1645,81 @@ extension AppTypographyExtension on BuildContext {
          ),
         ),
       ),
-    );
-  }
+     ), // end Expanded
+
+     // --- Resize Handle (Figma Like) ---
+     if (_isPanelOpen)
+       MouseRegion(
+         cursor: SystemMouseCursors.resizeLeftRight,
+         child: GestureDetector(
+           behavior: HitTestBehavior.opaque,
+           onHorizontalDragStart: (_) {
+             setState(() => _isDragging = true);
+           },
+           onHorizontalDragUpdate: (details) {
+             setState(() {
+               _inspectorWidth -= details.delta.dx;
+               final maxWidth = MediaQuery.of(context).size.width / 2;
+               _inspectorWidth = _inspectorWidth.clamp(200.0, maxWidth);
+             });
+           },
+           onHorizontalDragEnd: (_) {
+             setState(() => _isDragging = false);
+           },
+           child: Container(
+             width: 4,
+             color: Colors.transparent,
+           ),
+         ),
+       ),
+
+     // --- Properties Panel ---
+     AnimatedContainer(
+       duration: _isDragging ? Duration.zero : const Duration(milliseconds: 300),
+       curve: Curves.easeInOutCubic,
+       width: _isPanelOpen ? _inspectorWidth : 0.0,
+       decoration: BoxDecoration(
+         color: Theme.of(context).colorScheme.surface,
+         border: Border(
+           left: BorderSide(
+             color: Colors.grey.withOpacity(0.2), // Figma-like subtle border
+             width: 1,
+           ),
+         ),
+         boxShadow: [
+           if (_isPanelOpen)
+             BoxShadow(
+               color: Colors.black.withOpacity(0.05),
+               blurRadius: 10,
+               offset: const Offset(-2, 0),
+             )
+         ],
+       ),
+       child: ClipRect( // 横幅が0になっても中身がはみ出さないようにClip
+         child: SizedBox(
+           width: _inspectorWidth,
+           child: Theme(
+             data: ThemeData(
+               useMaterial3: true,
+               colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueGrey, brightness: Brightness.light),
+               textTheme: const TextTheme(
+                 bodyLarge: TextStyle(fontSize: 14),
+                 bodyMedium: TextStyle(fontSize: 13),
+                 bodySmall: TextStyle(fontSize: 11),
+                 labelLarge: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+               ),
+             ),
+             child: Builder(
+               builder: (editorContext) => _buildLiveEditorPanel(editorContext),
+             ),
+           ),
+         ),
+       ),
+     ),
+    ], // end Row children
+   ), // end Row
+  ); // end Scaffold
+ }
 }
 
 class SitemapPainter extends CustomPainter {
