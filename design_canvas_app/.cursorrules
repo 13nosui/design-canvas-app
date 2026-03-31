@@ -1,0 +1,51 @@
+# Flutter Component Separation Rules
+
+このプロジェクトでは、デザインキャンバスにおける UI / UIスタイルの編集作業と、エンジニアのロジック開発作業がGit上でコンフリクトするのを防ぐため、厳格な「**コンポーネントのロジックとスタイルの分離**」ルールを採用しています。
+
+新しいコンポーネントや画面を追加、または既存のものをリファクタリングする際は、**必ず2つのファイルに分割**してください。
+
+## 1. ファイル命名と責務定義
+
+### ロジックファイル: `{name}.dart`
+- **責務**: データの取得、State/Provider の購読、イベントのハンドリング、レイアウト（Row/Column）の骨組み構築。
+- **禁止事項**: 具体的な値（Padding, Color, BorderRadius, TextStyle, Width/Height 等の値）をハードコードしてはいけません。
+
+### スタイルファイル: `{name}.styles.dart`
+- **責務**: そのコンポーネントにおける「見た目」に関する全ての定義（定数やスタティックメソッド）を保持。
+- **保持すべき内容**: 
+  - `EdgeInsets`, `Size`, `BorderRadius` 等の定数。
+  - `BoxDecoration`, `TextStyle` 等のスタティックな装飾クラス。
+  - デザインキャンバスが操作対象とするカラーパレットやフォントサイズのバインディング。
+- **禁止事項**: Provider・Controller等への依存、ドメインロジックの記述。
+
+---
+
+## 2. 例
+```dart
+// my_button.styles.dart
+class MyButtonStyles {
+  static const padding = EdgeInsets.symmetric(horizontal: 16, vertical: 8);
+  static const borderRadius = BorderRadius.all(Radius.circular(8));
+  static final textStyle = TextStyle(fontSize: 16, fontWeight: FontWeight.bold);
+}
+```
+
+```dart
+// my_button.dart
+import 'my_button.styles.dart';
+
+class MyButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    // ロジックと構造のみ記述
+    return Padding(
+      padding: MyButtonStyles.padding,
+      child: Text('Hello', style: MyButtonStyles.textStyle),
+    );
+  }
+}
+```
+
+## 3. キャンバスツール（UIエディタ）向け連携
+- デザインキャンバスからは `{name}.styles.dart` 側に対してパースおよび書き換え（Write）が行われます。
+- `{name}.dart` 側は基本的に「キャンバスからは編集不可」または「構造の読み取りのみ」として扱われます。

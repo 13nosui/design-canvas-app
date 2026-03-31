@@ -3,6 +3,9 @@ import 'package:go_router/go_router.dart';
 import '../presentation/pages/home_page.dart';
 import '../presentation/pages/login_page.dart';
 import '../presentation/pages/settings_page.dart';
+import '../ui/page/common/sidebar.dart';
+import '../core/sandbox/canvas_sandbox.dart';
+import 'scanned_routes.dart';
 
 // CanvasとGoRouterで共有するための単一ルート定義
 class AppRouteDef {
@@ -42,6 +45,21 @@ final List<AppRouteDef> canvasRoutes = [
 
   AppRouteDef('/profile', 'profile', (c) => const Scaffold(body: Center(child: Text('Profile Page'))), [], [], 'lib/presentation/pages/profile_page.dart'),
   AppRouteDef('/timeline', 'timeline', (c) => const Scaffold(body: Center(child: Text('Timeline Page'))), [], [], 'lib/presentation/pages/timeline_page.dart'),
+
+  // サンドボックスを使ったTwitter CloneのSidebar (手動追加版)
+  AppRouteDef(
+    '/sandbox/sidebar', 
+    'Twitter Clone Sidebar\n(Canvas Sandbox)', 
+    (c) => const CanvasSandbox(child: SidebarMenu()), 
+    [], [], 
+    'lib/ui/page/common/sidebar.dart'
+  ),
+
+  // ==========================================
+  // 自動走査（スキャン）された未確認ページのルート群
+  // bin/scan_pages.dart によって生成されます
+  // ==========================================
+  ...unconfirmedRoutes,
 ];
 
 final appRouter = GoRouter(
