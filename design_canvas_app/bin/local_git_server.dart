@@ -247,19 +247,16 @@ Future<void> main() async {
           AstNode current = visitor.targetNode!;
           AstNode? parentWidget;
 
-          // 💡 ASTを上に辿り、`child: Inspectable(...)` となっている親ウィジェットを探す
           if (current.parent is NamedExpression &&
               current.parent!.parent is ArgumentList) {
             final namedExp = current.parent as NamedExpression;
             if (namedExp.name.label.name == 'child' ||
                 namedExp.name.label.name == 'body') {
-              // さらにその上が Padding や Center などのウィジェット本体
               parentWidget = current.parent!.parent!.parent;
             }
           }
 
           if (parentWidget != null) {
-            // 親ウィジェット（殻）全体を、中身（Inspectable）だけで上書きする
             final originalInnerCode = fileContent.substring(
                 current.offset, current.offset + current.length);
             final before = fileContent.substring(0, parentWidget.offset);
@@ -281,6 +278,157 @@ Future<void> main() async {
                   'Cannot unwrap: Target is not wrapped by a single child widget.'
             }));
           }
+        } else {
+          request.response.statusCode = HttpStatus.badRequest;
+          request.response
+              .write(jsonEncode({'error': 'Target not found using AST'}));
+        }
+      } catch (e) {
+        request.response.statusCode = HttpStatus.internalServerError;
+        request.response.write(jsonEncode({'error': e.toString()}));
+      } finally {
+        await request.response.close();
+      }
+    }
+    // 👯 Duplicate (複製) エンドポイント
+    else if (request.method == 'POST' &&
+        request.uri.path == '/inspector/duplicate') {
+      try {
+        final content = await utf8.decoder.bind(request).join();
+        final data = jsonDecode(content);
+        final filePath = data['path'];
+        final id = data['id'];
+
+        final file = File(filePath);
+        if (!file.existsSync()) throw Exception('File not found: $filePath');
+
+        String fileContent = file.readAsStringSync();
+        final parseResult =
+            parseString(content: fileContent, throwIfDiagnostics: false);
+        final visitor = WidgetLocatorVisitor(id);
+        parseResult.unit.accept(visitor);
+
+        if (visitor.targetNode != null) {
+          AstNode nodeToDuplicate = visitor.targetNode!;
+          final originalCode = fileContent.substring(nodeToDuplicate.offset,
+              nodeToDuplicate.offset + nodeToDuplicate.length);
+
+          final newId = '${id}_copy';
+          final duplicatedCode = originalCode.replaceFirst("'$id'", "'$newId'");
+
+          if (nodeToDuplicate.parent is ListLiteral) {
+            final before = fileContent.substring(
+                0, nodeToDuplicate.offset + nodeToDuplicate.length);
+            final after = fileContent
+                .substring(nodeToDuplicate.offset + nodeToDuplicate.length);
+
+            fileContent = before + ',\n' + duplicatedCode + after;
+            file.writeAsStringSync(fileContent);
+
+            print('👯 [SUCCESS-AST] Duplicated widget inside List for id=$id');
+          } else {
+            final before = fileContent.substring(0, nodeToDuplicate.offset);
+            final after = fileContent
+                .substring(nodeToDuplicate.offset + nodeToDuplicate.length);
+
+            final columnWrappedCode = '''Column(
+  mainAxisSize: MainAxisSize.min,
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    $originalCode,
+    $duplicatedCode,
+  ],
+)''';
+            fileContent = before + columnWrappedCode + after;
+            file.writeAsStringSync(fileContent);
+
+            print(
+                '👯✨ [SUCCESS-AST] Auto-wrapped in Column and duplicated for id=$id');
+          }
+
+          triggerHotReload();
+          request.response.statusCode = HttpStatus.ok;
+          request.response.write(jsonEncode({'status': 'success'}));
+        } else {
+          request.response.statusCode = HttpStatus.badRequest;
+          request.response
+              .write(jsonEncode({'error': 'Target not found using AST'}));
+        }
+      } catch (e) {
+        request.response.statusCode = HttpStatus.internalServerError;
+        request.response.write(jsonEncode({'error': e.toString()}));
+      } finally {
+        await request.response.close();
+      }
+    }
+    // ✨ Insert (新規追加) エンドポイント
+    else if (request.method == 'POST' &&
+        request.uri.path == '/inspector/insert') {
+      try {
+        final content = await utf8.decoder.bind(request).join();
+        final data = jsonDecode(content);
+        final filePath = data['path'];
+        final id = data['id'];
+
+        final file = File(filePath);
+        if (!file.existsSync()) throw Exception('File not found: $filePath');
+
+        String fileContent = file.readAsStringSync();
+        final parseResult =
+            parseString(content: fileContent, throwIfDiagnostics: false);
+        final visitor = WidgetLocatorVisitor(id);
+        parseResult.unit.accept(visitor);
+
+        if (visitor.targetNode != null) {
+          AstNode targetNode = visitor.targetNode!;
+          final newId = 'NewWidget_${DateTime.now().millisecondsSinceEpoch}';
+
+          // 💡 修正：点線（dash）を削除し、太めのソリッドボーダー（width: 2.0）に変更
+          final newWidgetCode = '''Inspectable(
+  id: '$newId',
+  child: Container(
+    padding: const EdgeInsets.all(16),
+    margin: const EdgeInsets.symmetric(vertical: 8),
+    decoration: BoxDecoration(
+      color: Colors.grey.withOpacity(0.1),
+      border: Border.all(color: Colors.grey.withOpacity(0.5), width: 2.0),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: const Text('New Element (Press T to edit)'),
+  ),
+)''';
+
+          if (targetNode.parent is ListLiteral) {
+            final before =
+                fileContent.substring(0, targetNode.offset + targetNode.length);
+            final after =
+                fileContent.substring(targetNode.offset + targetNode.length);
+            fileContent = before + ',\n' + newWidgetCode + after;
+            file.writeAsStringSync(fileContent);
+            print('✨ [SUCCESS-AST] Inserted new widget inside List for id=$id');
+          } else {
+            final originalCode = fileContent.substring(
+                targetNode.offset, targetNode.offset + targetNode.length);
+            final before = fileContent.substring(0, targetNode.offset);
+            final after =
+                fileContent.substring(targetNode.offset + targetNode.length);
+            final columnWrappedCode = '''Column(
+  mainAxisSize: MainAxisSize.min,
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    $originalCode,
+    $newWidgetCode,
+  ],
+)''';
+            fileContent = before + columnWrappedCode + after;
+            file.writeAsStringSync(fileContent);
+            print(
+                '✨ [SUCCESS-AST] Auto-wrapped in Column and inserted new widget for id=$id');
+          }
+
+          triggerHotReload();
+          request.response.statusCode = HttpStatus.ok;
+          request.response.write(jsonEncode({'status': 'success'}));
         } else {
           request.response.statusCode = HttpStatus.badRequest;
           request.response

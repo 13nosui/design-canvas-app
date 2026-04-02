@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -375,6 +376,84 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
       }
     } catch (e) {
       debugPrint('Exception unwrapping widget: $e');
+    }
+  }
+
+  // 👯 選択したコンポーネントを複製する (Cmd + D)
+  Future<void> _duplicateSelectedComponent() async {
+    if (_selectedComponentId == null) return;
+
+    String path = _inspectedFilePath?.replaceFirst('.styles.dart', '.dart') ??
+        'lib/ui/page/feed/feed_page.dart';
+    final targetId = _selectedComponentId!;
+
+    try {
+      debugPrint('Sending duplicate request to $path, id: $targetId');
+      final response = await http.post(
+        Uri.parse('http://localhost:8080/inspector/duplicate'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'path': path, 'id': targetId}),
+      );
+
+      if (response.statusCode == 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('👯 Duplicated successfully!'),
+                backgroundColor: Colors.purpleAccent),
+          );
+        }
+      } else {
+        if (mounted) {
+          final errorMsg = jsonDecode(response.body)['error'];
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text('❌ Cannot duplicate: $errorMsg'),
+                backgroundColor: Colors.orange),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Exception duplicating widget: $e');
+    }
+  }
+
+  // ✨ 選択したコンポーネントのすぐ下に新しい要素を追加する (Shift + N)
+  Future<void> _insertNewComponent() async {
+    if (_selectedComponentId == null) return;
+
+    String path = _inspectedFilePath?.replaceFirst('.styles.dart', '.dart') ??
+        'lib/ui/page/feed/feed_page.dart';
+    final targetId = _selectedComponentId!;
+
+    try {
+      debugPrint('Sending insert request to $path, id: $targetId');
+      final response = await http.post(
+        Uri.parse('http://localhost:8080/inspector/insert'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'path': path, 'id': targetId}),
+      );
+
+      if (response.statusCode == 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('✨ Inserted new element successfully!'),
+                backgroundColor: Colors.teal),
+          );
+        }
+      } else {
+        if (mounted) {
+          final errorMsg = jsonDecode(response.body)['error'];
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text('❌ Cannot insert: $errorMsg'),
+                backgroundColor: Colors.orange),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Exception inserting widget: $e');
     }
   }
 
@@ -1205,7 +1284,16 @@ extension AppTypographyExtension on BuildContext {
               ),
               child: Container(
                 color: Theme.of(context).colorScheme.surface,
-                child: content,
+                child: ScrollConfiguration(
+                  behavior: ScrollConfiguration.of(context).copyWith(
+                    dragDevices: {
+                      PointerDeviceKind.touch,
+                      PointerDeviceKind.mouse,
+                      PointerDeviceKind.trackpad,
+                    },
+                  ),
+                  child: content,
+                ),
               ),
             ),
           ),
@@ -2059,6 +2147,24 @@ extension AppTypographyExtension on BuildContext {
                     if (_selectedComponentId != null &&
                         _inlineEditorEntry == null) {
                       _unwrapSelectedComponent();
+                      return KeyEventResult.handled;
+                    }
+                  } else if (event.logicalKey == LogicalKeyboardKey.keyN) {
+                    if (_selectedComponentId != null &&
+                        _inlineEditorEntry == null) {
+                      _insertNewComponent();
+                      return KeyEventResult.handled;
+                    }
+                  }
+                }
+
+                if (event is KeyDownEvent &&
+                    (HardwareKeyboard.instance.isMetaPressed ||
+                        HardwareKeyboard.instance.isControlPressed)) {
+                  if (event.logicalKey == LogicalKeyboardKey.keyD) {
+                    if (_selectedComponentId != null &&
+                        _inlineEditorEntry == null) {
+                      _duplicateSelectedComponent();
                       return KeyEventResult.handled;
                     }
                   }
