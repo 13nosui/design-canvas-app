@@ -339,6 +339,45 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
     }
   }
 
+  // 🔓 選択したコンポーネントの外側（親ウィジェット）を剥がす
+  Future<void> _unwrapSelectedComponent() async {
+    if (_selectedComponentId == null) return;
+
+    String path = _inspectedFilePath?.replaceFirst('.styles.dart', '.dart') ??
+        'lib/ui/page/feed/feed_page.dart';
+    final targetId = _selectedComponentId!;
+
+    try {
+      debugPrint('Sending unwrap request to $path, id: $targetId');
+      final response = await http.post(
+        Uri.parse('http://localhost:8080/inspector/unwrap'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'path': path, 'id': targetId}),
+      );
+
+      if (response.statusCode == 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('🔓 Unwrapped successfully!'),
+                backgroundColor: Colors.blueAccent),
+          );
+        }
+      } else {
+        if (mounted) {
+          final errorMsg = jsonDecode(response.body)['error'];
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text('❌ Error unwrapping: $errorMsg'),
+                backgroundColor: Colors.orange), // 剥がせない時は警告色
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Exception unwrapping widget: $e');
+    }
+  }
+
   Map<String, AppRouteDef> _getFlatRoutes(List<AppRouteDef> routes) {
     final Map<String, AppRouteDef> map = {};
     for (var route in routes) {
@@ -2014,6 +2053,12 @@ extension AppTypographyExtension on BuildContext {
                     if (_selectedComponentId != null &&
                         _inlineEditorEntry == null) {
                       _wrapSelectedComponent('Center');
+                      return KeyEventResult.handled;
+                    }
+                  } else if (event.logicalKey == LogicalKeyboardKey.keyU) {
+                    if (_selectedComponentId != null &&
+                        _inlineEditorEntry == null) {
+                      _unwrapSelectedComponent();
                       return KeyEventResult.handled;
                     }
                   }

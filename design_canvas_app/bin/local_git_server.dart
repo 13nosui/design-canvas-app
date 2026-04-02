@@ -187,7 +187,6 @@ Future<void> main() async {
 
         if (visitor.targetNode != null) {
           AstNode nodeToWrap = visitor.targetNode!;
-
           final originalWidgetCode = fileContent.substring(
               nodeToWrap.offset, nodeToWrap.offset + nodeToWrap.length);
 
@@ -214,6 +213,74 @@ Future<void> main() async {
 
           request.response.statusCode = HttpStatus.ok;
           request.response.write(jsonEncode({'status': 'success'}));
+        } else {
+          request.response.statusCode = HttpStatus.badRequest;
+          request.response
+              .write(jsonEncode({'error': 'Target not found using AST'}));
+        }
+      } catch (e) {
+        request.response.statusCode = HttpStatus.internalServerError;
+        request.response.write(jsonEncode({'error': e.toString()}));
+      } finally {
+        await request.response.close();
+      }
+    }
+    // 🔓 Unwrap (包み解除) エンドポイント
+    else if (request.method == 'POST' &&
+        request.uri.path == '/inspector/unwrap') {
+      try {
+        final content = await utf8.decoder.bind(request).join();
+        final data = jsonDecode(content);
+        final filePath = data['path'];
+        final id = data['id'];
+
+        final file = File(filePath);
+        if (!file.existsSync()) throw Exception('File not found: $filePath');
+
+        String fileContent = file.readAsStringSync();
+        final parseResult =
+            parseString(content: fileContent, throwIfDiagnostics: false);
+        final visitor = WidgetLocatorVisitor(id);
+        parseResult.unit.accept(visitor);
+
+        if (visitor.targetNode != null) {
+          AstNode current = visitor.targetNode!;
+          AstNode? parentWidget;
+
+          // 💡 ASTを上に辿り、`child: Inspectable(...)` となっている親ウィジェットを探す
+          if (current.parent is NamedExpression &&
+              current.parent!.parent is ArgumentList) {
+            final namedExp = current.parent as NamedExpression;
+            if (namedExp.name.label.name == 'child' ||
+                namedExp.name.label.name == 'body') {
+              // さらにその上が Padding や Center などのウィジェット本体
+              parentWidget = current.parent!.parent!.parent;
+            }
+          }
+
+          if (parentWidget != null) {
+            // 親ウィジェット（殻）全体を、中身（Inspectable）だけで上書きする
+            final originalInnerCode = fileContent.substring(
+                current.offset, current.offset + current.length);
+            final before = fileContent.substring(0, parentWidget.offset);
+            final after = fileContent
+                .substring(parentWidget.offset + parentWidget.length);
+
+            fileContent = before + originalInnerCode + after;
+            file.writeAsStringSync(fileContent);
+
+            print('🔓 [SUCCESS-AST] Unwrapped widget in $filePath for id=$id');
+            triggerHotReload();
+
+            request.response.statusCode = HttpStatus.ok;
+            request.response.write(jsonEncode({'status': 'success'}));
+          } else {
+            request.response.statusCode = HttpStatus.badRequest;
+            request.response.write(jsonEncode({
+              'error':
+                  'Cannot unwrap: Target is not wrapped by a single child widget.'
+            }));
+          }
         } else {
           request.response.statusCode = HttpStatus.badRequest;
           request.response
@@ -426,10 +493,59 @@ Future<void> main() async {
       }
     } else if (request.method == 'POST' &&
         request.uri.path == '/inspector/promote') {
-      // 省略 (既存のまま)
-      request.response.statusCode = HttpStatus.ok;
-      request.response.write(jsonEncode({'status': 'success'}));
-      await request.response.close();
+      try {
+        final content = await utf8.decoder.bind(request).join();
+        final data = jsonDecode(content);
+        final filePath = data['path'];
+        final className = data['className'];
+        final fieldName = data['name'];
+        final tokenName = data['tokenName'];
+        final tokenValue = data['value'];
+
+        final tokenFile = File('lib/core/design_system/tokens.dart');
+        String tokenContent = tokenFile.readAsStringSync();
+        final appendIndex = tokenContent.lastIndexOf('}');
+        if (appendIndex != -1) {
+          final insertText =
+              '\n  static const $tokenName = $tokenValue; // promoted from $fieldName\n';
+          tokenContent = tokenContent.substring(0, appendIndex) +
+              insertText +
+              tokenContent.substring(appendIndex);
+          tokenFile.writeAsStringSync(tokenContent);
+        }
+
+        final styleFile = File(filePath);
+        String styleContent = styleFile.readAsStringSync();
+        if (className != null) {
+          final classRegex =
+              RegExp(r'(class\s+' + className + r'\s*\{)([^}]*)(\})');
+          if (classRegex.hasMatch(styleContent)) {
+            styleContent =
+                styleContent.replaceFirstMapped(classRegex, (classMatch) {
+              final prefix = classMatch.group(1)!;
+              String body = classMatch.group(2)!;
+              final suffix = classMatch.group(3)!;
+              final replaceRegex = RegExp(r'(static\s+(?:const|final)\s+' +
+                  fieldName +
+                  r'\s*=\s*)([^;]+)(;[^\n]*\n?)');
+              if (replaceRegex.hasMatch(body)) {
+                body = body.replaceFirstMapped(replaceRegex,
+                    (m) => '${m.group(1)}AppTokens.$tokenName;\n');
+              }
+              return '$prefix$body$suffix';
+            });
+            styleFile.writeAsStringSync(styleContent);
+            triggerHotReload();
+          }
+        }
+        request.response.statusCode = HttpStatus.ok;
+        request.response.write(jsonEncode({'status': 'success'}));
+      } catch (e) {
+        request.response.statusCode = HttpStatus.internalServerError;
+        request.response.write(jsonEncode({'error': e.toString()}));
+      } finally {
+        await request.response.close();
+      }
     } else if (request.method == 'POST' && request.uri.path == '/commit') {
       try {
         final content = await utf8.decoder.bind(request).join();
@@ -465,10 +581,33 @@ Future<void> main() async {
         await request.response.close();
       }
     } else if (request.method == 'POST' && request.uri.path == '/open-ide') {
-      // 省略 (既存のまま)
-      request.response.statusCode = HttpStatus.ok;
-      request.response.write(jsonEncode({'status': 'success'}));
-      await request.response.close();
+      try {
+        final content = await utf8.decoder.bind(request).join();
+        final data = jsonDecode(content) as Map<String, dynamic>;
+        final filePath = data['filePath'] as String?;
+        if (filePath == null || filePath.isEmpty) {
+          request.response.statusCode = HttpStatus.badRequest;
+          request.response
+              .write(jsonEncode({'error': 'filePath cannot be empty'}));
+          await request.response.close();
+          continue;
+        }
+        var result =
+            await Process.run('cursor', ['-g', filePath], runInShell: true);
+        if (result.exitCode != 0) {
+          result =
+              await Process.run('code', ['-g', filePath], runInShell: true);
+        }
+        if (result.exitCode != 0)
+          throw Exception('Failed to open IDE: ${result.stderr}');
+        request.response.statusCode = HttpStatus.ok;
+        request.response.write(jsonEncode({'status': 'success'}));
+      } catch (e) {
+        request.response.statusCode = HttpStatus.internalServerError;
+        request.response.write(jsonEncode({'error': e.toString()}));
+      } finally {
+        await request.response.close();
+      }
     } else {
       request.response.statusCode = HttpStatus.notFound;
       request.response.write(jsonEncode({'error': 'Not Found'}));
