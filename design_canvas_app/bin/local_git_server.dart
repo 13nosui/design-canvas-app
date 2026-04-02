@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:async'; // 💡 Timerを使うために追加
 
 const int port = 8080;
-WebSocket? vmSocket;
-String? mainIsolateId;
+Timer? _reloadTimer; // 💡 連続発火を防ぐためのタイマー
 
 void setCorsHeaders(HttpResponse response) {
   response.headers.add('Access-Control-Allow-Origin', '*');
@@ -12,70 +12,34 @@ void setCorsHeaders(HttpResponse response) {
       'Origin, X-Requested-With, Content-Type, Accept');
 }
 
-// --- Flutterのデバッグサーバー(VM Service)に接続する ---
-Future<void> connectToVmService(String wsUrl) async {
-  try {
-    vmSocket = await WebSocket.connect(wsUrl);
-    print('🔌 Connected to Flutter VM Service at $wsUrl');
-
-    vmSocket!.listen((data) {
-      final response = jsonDecode(data);
-      // 初回接続時にIsolate(メインスレッド)のIDを取得する
-      if (response['id'] == '1' && response['result'] != null) {
-        final isolates = response['result']['isolates'] as List?;
-        if (isolates != null && isolates.isNotEmpty) {
-          mainIsolateId = isolates[0]['id'];
-          print('🧩 Found Main Isolate: $mainIsolateId');
-        }
-      }
-    }, onDone: () {
-      print('🔌 VM Service disconnected.');
-      vmSocket = null;
-    });
-
-    // VMの情報を要求するRPCコマンド
-    vmSocket!.add(jsonEncode({"jsonrpc": "2.0", "method": "getVM", "id": "1"}));
-  } catch (e) {
-    print('⚠️ Could not connect to VM Service: $e');
-  }
-}
-
-// --- Hot Reload / Hot Restart を強制発火させる ---
+// --- Hot Reload を安全に遅延発火させる ---
 void triggerHotReload() {
-  if (vmSocket != null && mainIsolateId != null) {
-    print('🔥 Triggering Auto Hot-Reload/Restart...');
-    // Flutter Web/Native両方に対応するため、2種類の再起動コマンドを投げる
-    vmSocket!.add(jsonEncode({
-      "jsonrpc": "2.0",
-      "method": "ext.flutter.reassemble",
-      "params": {"isolateId": mainIsolateId},
-      "id": "2"
-    }));
-    vmSocket!.add(jsonEncode({
-      "jsonrpc": "2.0",
-      "method": "ext.dwds.hotRestart",
-      "params": {"isolateId": mainIsolateId},
-      "id": "3"
-    }));
-  } else {
-    print('⚠️ VM Socket not connected. Please press "r" manually.');
-  }
+  // 💡 連続でリクエストが来ても、前のタイマーをキャンセルして最後の1回だけ実行する（Debounce）
+  if (_reloadTimer?.isActive ?? false) _reloadTimer!.cancel();
+
+  _reloadTimer = Timer(const Duration(milliseconds: 250), () {
+    print('🔥 Triggering Auto Hot-Reload safely...');
+
+    // 💡 "flutter"という大雑把な指定をやめ、ターミナルのメインプロセス（flutter_tools）だけを正確に狙撃する
+    Process.run('pkill', ['-USR1', '-f', 'flutter_tools.snapshot'])
+        .then((result) {
+      if (result.exitCode == 0) {
+        print('✅ Safely sent Hot Reload signal!');
+      } else {
+        // 環境によってプロセス名が違う場合のフォールバック
+        Process.run('pkill', ['-USR1', '-f', 'flutter run']);
+        print('✅ Safely sent Hot Reload signal! (Fallback)');
+      }
+    });
+  });
 }
 
-Future<void> main(List<String> args) async {
-  // コマンドライン引数からWebSocketのURLを受け取る
-  if (args.isNotEmpty) {
-    await connectToVmService(args[0]);
-  } else {
-    print(
-        '💡 Hint: To enable Auto Hot-Reload, pass the VM Service WS URL as an argument.');
-    print(
-        'Example: dart run bin/local_git_server.dart "ws://127.0.0.1:xxxxx/xxxxx=/ws"');
-  }
-
+Future<void> main() async {
   final server = await HttpServer.bind(InternetAddress.loopbackIPv4, port);
   print('🚀 Local Git Server is running on port $port');
   print('Waiting for design canvas commits...');
+  print(
+      '💡 Tip: No WebSocket URL needed anymore! Just edit and watch the magic.');
 
   await for (HttpRequest request in server) {
     setCorsHeaders(request.response);
@@ -132,7 +96,6 @@ Future<void> main(List<String> args) async {
         await request.response.close();
       }
     } else if (request.method == 'POST' && request.uri.path == '/open-ide') {
-      // ... IDEを開く処理 (既存のまま)
       try {
         final content = await utf8.decoder.bind(request).join();
         final data = jsonDecode(content) as Map<String, dynamic>;
@@ -162,7 +125,6 @@ Future<void> main(List<String> args) async {
       }
     } else if (request.method == 'GET' &&
         request.uri.path == '/inspector/parse') {
-      // ... パース処理 (既存のまま)
       try {
         final filePath = request.uri.queryParameters['path'];
         if (filePath == null) throw Exception('path is required');
@@ -247,7 +209,7 @@ Future<void> main(List<String> args) async {
             if (matchedProperty) {
               print(
                   '[SUCCESS] Updated style property: $className.$fieldName = $newValue');
-              triggerHotReload(); // 💡 ここで自動リロードを発火！
+              triggerHotReload();
             }
           }
         } else {
@@ -261,7 +223,7 @@ Future<void> main(List<String> args) async {
             file.writeAsStringSync(fileContent);
             print(
                 '[SUCCESS] Updated global style property: $fieldName = $newValue');
-            triggerHotReload(); // 💡 ここでも自動リロードを発火！
+            triggerHotReload();
           }
         }
         request.response.statusCode = HttpStatus.ok;
@@ -316,7 +278,7 @@ Future<void> main(List<String> args) async {
               return '$prefix$body$suffix';
             });
             styleFile.writeAsStringSync(styleContent);
-            triggerHotReload(); // 💡 ここで自動リロードを発火！
+            triggerHotReload();
           }
         }
         request.response.statusCode = HttpStatus.ok;
@@ -346,7 +308,7 @@ Future<void> main(List<String> args) async {
               replaceRegex, (m) => '${m.group(1)}${m.group(2)}$newText\'');
           file.writeAsStringSync(fileContent);
           print('[SUCCESS] Replaced text in $filePath for id=$id');
-          triggerHotReload(); // 💡 ここで自動リロードを発火！
+          triggerHotReload();
 
           request.response.statusCode = HttpStatus.ok;
           request.response.write(jsonEncode({'status': 'success'}));
@@ -366,7 +328,7 @@ Future<void> main(List<String> args) async {
                 file.writeAsStringSync(content);
                 print(
                     '[SUCCESS] Replaced text in ${file.path} for id=$id (Fallback Global Search)');
-                triggerHotReload(); // 💡 ここでも自動リロードを発火！
+                triggerHotReload();
 
                 request.response.statusCode = HttpStatus.ok;
                 request.response.write(

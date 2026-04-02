@@ -90,7 +90,11 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
   final double xSpacing = 200;
 
   void _onCanvasPointerDown(PointerDownEvent event) {
-    if (!_isModifierPressed) {
+    // 💡 変更：手動フラグではなく、OSのキーボード状態を直接取得する
+    final isModifierPressed = HardwareKeyboard.instance.isMetaPressed ||
+        HardwareKeyboard.instance.isControlPressed;
+
+    if (!isModifierPressed) {
       if (_inlineEditorEntry != null) _removeInlineEditor();
       return;
     }
@@ -98,10 +102,13 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
     final hitTestResult = HitTestResult();
     WidgetsBinding.instance.hitTest(hitTestResult, event.position);
 
+    bool hitInspectable = false;
+
     for (final entry in hitTestResult.path) {
       if (entry.target is RenderMetaData) {
         final metaData = (entry.target as RenderMetaData).metaData;
         if (metaData is InspectableData) {
+          hitInspectable = true;
           setState(() {
             if (_selectedComponentId == metaData.id) {
               _selectedComponentId = null;
@@ -120,6 +127,15 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
           break;
         }
       }
+    }
+
+    if (!hitInspectable) {
+      setState(() {
+        _selectedComponentId = null;
+        _selectedComponentIsText = false;
+        _selectedComponentPosition = null;
+        if (_inlineEditorEntry != null) _removeInlineEditor();
+      });
     }
   }
 
@@ -1927,27 +1943,13 @@ extension AppTypographyExtension on BuildContext {
             child: Focus(
               autofocus: true,
               onKeyEvent: (node, event) {
-                if (event is KeyDownEvent) {
-                  if (event.logicalKey == LogicalKeyboardKey.metaLeft ||
-                      event.logicalKey == LogicalKeyboardKey.metaRight ||
-                      event.logicalKey == LogicalKeyboardKey.controlLeft ||
-                      event.logicalKey == LogicalKeyboardKey.controlRight) {
-                    _isModifierPressed = true;
-                  }
-                  if (event.logicalKey == LogicalKeyboardKey.keyT) {
-                    if (_selectedComponentId != null &&
-                        _selectedComponentIsText &&
-                        _inlineEditorEntry == null) {
-                      _showInlineEditor();
-                      return KeyEventResult.handled;
-                    }
-                  }
-                } else if (event is KeyUpEvent) {
-                  if (event.logicalKey == LogicalKeyboardKey.metaLeft ||
-                      event.logicalKey == LogicalKeyboardKey.metaRight ||
-                      event.logicalKey == LogicalKeyboardKey.controlLeft ||
-                      event.logicalKey == LogicalKeyboardKey.controlRight) {
-                    _isModifierPressed = false;
+                if (event is KeyDownEvent &&
+                    event.logicalKey == LogicalKeyboardKey.keyT) {
+                  if (_selectedComponentId != null &&
+                      _selectedComponentIsText &&
+                      _inlineEditorEntry == null) {
+                    _showInlineEditor();
+                    return KeyEventResult.handled;
                   }
                 }
                 return KeyEventResult.ignored;
