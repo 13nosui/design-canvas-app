@@ -55,6 +55,8 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
   final GlobalKey _canvasKey = GlobalKey();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
+  final FocusNode _canvasFocusNode = FocusNode();
+
   final double deviceSpacing = 64.0;
 
   DeviceSpec? get _singleDevice {
@@ -90,6 +92,11 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
   final double xSpacing = 200;
 
   void _onCanvasPointerDown(PointerDownEvent event) {
+    // 👇 キャンバスをクリックした瞬間、確実にフォーカスをキャンバスに取り戻す
+    if (!_canvasFocusNode.hasFocus) {
+      _canvasFocusNode.requestFocus();
+    }
+
     // 💡 変更：手動フラグではなく、OSのキーボード状態を直接取得する
     final isModifierPressed = HardwareKeyboard.instance.isMetaPressed ||
         HardwareKeyboard.instance.isControlPressed;
@@ -172,6 +179,7 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
       _inlineEditorEntry!.remove();
       _inlineEditorEntry = null;
     }
+    _canvasFocusNode.dispose();
     super.dispose();
   }
 
@@ -191,6 +199,7 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
     if (_inlineEditorEntry != null) {
       _inlineEditorEntry!.remove();
       _inlineEditorEntry = null;
+      FocusScope.of(context).requestFocus();
     }
   }
 
@@ -1941,6 +1950,7 @@ extension AppTypographyExtension on BuildContext {
         children: [
           Expanded(
             child: Focus(
+              focusNode: _canvasFocusNode,
               autofocus: true,
               onKeyEvent: (node, event) {
                 if (event is KeyDownEvent &&

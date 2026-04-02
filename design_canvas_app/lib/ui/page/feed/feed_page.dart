@@ -20,7 +20,7 @@ class FeedPage extends StatelessWidget {
           isText: true,
           child: AppBar(
             // titleの中のInspectableとGestureDetectorを外し、シンプルなTextに戻します
-            title: Text('ddd', style: FeedAppBarStyle.titleTypography),
+            title: Text('sss', style: FeedAppBarStyle.titleTypography),
             backgroundColor: FeedAppBarStyle.backgroundColor,
             elevation: 1,
           ),
