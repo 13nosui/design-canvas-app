@@ -30,7 +30,9 @@ class FeedPage extends StatelessWidget {
         itemCount: state.tweets.length,
         itemBuilder: (context, index) {
           final tweet = state.tweets[index];
-          return Inspectable(
+          return Padding(
+  padding: const EdgeInsets.all(16.0),
+  child: Inspectable(
             id: 'FeedTweetStyle',
             child: Container(
               padding: FeedTweetStyle.padding,
@@ -87,7 +89,8 @@ class FeedPage extends StatelessWidget {
                 ],
               ),
             ),
-          );
+          ),
+);
         },
       ),
       // AIによるデザイン自動補正のデモ対象

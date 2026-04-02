@@ -300,6 +300,45 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
     }
   }
 
+  // 📦 選択したコンポーネントを指定のWidgetで包み込む
+  Future<void> _wrapSelectedComponent(String wrapperType) async {
+    if (_selectedComponentId == null) return;
+
+    String path = _inspectedFilePath?.replaceFirst('.styles.dart', '.dart') ??
+        'lib/ui/page/feed/feed_page.dart';
+    final targetId = _selectedComponentId!;
+
+    try {
+      debugPrint('Sending wrap request: $wrapperType to $path, id: $targetId');
+      final response = await http.post(
+        Uri.parse('http://localhost:8080/inspector/wrap'),
+        headers: {'Content-Type': 'application/json'},
+        body:
+            jsonEncode({'path': path, 'id': targetId, 'wrapper': wrapperType}),
+      );
+
+      if (response.statusCode == 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text('📦 Wrapped with $wrapperType successfully!'),
+                backgroundColor: Colors.blueAccent),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text('❌ Error wrapping: ${response.body}'),
+                backgroundColor: Colors.redAccent),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Exception wrapping widget: $e');
+    }
+  }
+
   Map<String, AppRouteDef> _getFlatRoutes(List<AppRouteDef> routes) {
     final Map<String, AppRouteDef> map = {};
     for (var route in routes) {
@@ -1962,6 +2001,24 @@ extension AppTypographyExtension on BuildContext {
                     return KeyEventResult.handled;
                   }
                 }
+
+                if (event is KeyDownEvent &&
+                    HardwareKeyboard.instance.isShiftPressed) {
+                  if (event.logicalKey == LogicalKeyboardKey.keyP) {
+                    if (_selectedComponentId != null &&
+                        _inlineEditorEntry == null) {
+                      _wrapSelectedComponent('Padding');
+                      return KeyEventResult.handled;
+                    }
+                  } else if (event.logicalKey == LogicalKeyboardKey.keyC) {
+                    if (_selectedComponentId != null &&
+                        _inlineEditorEntry == null) {
+                      _wrapSelectedComponent('Center');
+                      return KeyEventResult.handled;
+                    }
+                  }
+                }
+
                 return KeyEventResult.ignored;
               },
               child: Listener(
