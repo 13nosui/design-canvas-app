@@ -1,0 +1,11 @@
+{
+  "name": "design-canvas-monorepo",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace=packages/prototype_engine",
+    "build:web": "npm run build --workspace=packages/prototype_engine"
+  }
+}
