@@ -19,3 +19,9 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+
+# Claude Code local state
+.claude/
+
+# Vercel
+.vercel
