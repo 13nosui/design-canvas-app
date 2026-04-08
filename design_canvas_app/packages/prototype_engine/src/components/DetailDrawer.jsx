@@ -111,7 +111,14 @@ export function DetailDrawer({ project, onClose }) {
 
 function DetailBody({ detail, isLoading }) {
   const screens = Array.isArray(detail?.screens)
-    ? detail.screens.filter((s) => s && s.name && s.purpose)
+    ? detail.screens
+        .filter((s) => s && s.name && s.purpose)
+        .map((s) => ({
+          ...s,
+          sections: Array.isArray(s.sections)
+            ? s.sections.filter((sec) => sec && sec.label && sec.body)
+            : [],
+        }))
     : []
   const apis = Array.isArray(detail?.apis)
     ? detail.apis.filter((a) => a && a.name && a.description)
@@ -130,11 +137,28 @@ function DetailBody({ detail, isLoading }) {
 
       {screens.length > 0 && (
         <Section label="主要画面">
-          <ul className="space-y-2">
+          <ul className="space-y-4">
             {screens.map((s) => (
-              <li key={s.name} className="flex flex-col gap-0.5">
+              <li key={s.name} className="flex flex-col gap-1">
                 <span className="text-sm font-medium text-slate-800">{s.name}</span>
                 <span className="text-xs text-slate-500 leading-relaxed">{s.purpose}</span>
+                {s.sections.length > 0 && (
+                  <ul className="mt-2 space-y-1.5">
+                    {s.sections.map((sec) => (
+                      <li
+                        key={`${s.name}::${sec.label}`}
+                        className="rounded-md bg-slate-50 border border-slate-200 px-2.5 py-1.5"
+                      >
+                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                          {sec.label}
+                        </div>
+                        <div className="text-xs text-slate-600 leading-relaxed mt-0.5">
+                          {sec.body}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </li>
             ))}
           </ul>
