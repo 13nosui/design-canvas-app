@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../presentation/pages/home_page.dart';
+import '../presentation/pages/import_page.dart';
 import '../presentation/pages/login_page.dart';
 import '../presentation/pages/settings_page.dart';
 import '../ui/page/common/sidebar.dart';
@@ -77,6 +78,15 @@ final List<AppRouteDef> canvasRoutes = [
       [],
       [],
       'lib/ui/page/common/sidebar.dart'),
+
+  // React 側 prototype_engine からハンドオフされたプロジェクトを表示する
+  AppRouteDef(
+      '/import',
+      'Import',
+      (c) => const ImportPage(),
+      [],
+      [],
+      'lib/presentation/pages/import_page.dart'),
 
   // ==========================================
   // 自動走査（スキャン）された未確認ページのルート群

@@ -6,6 +6,27 @@ import { useEffect } from 'react'
 const SECTION_CLASS = 'border-t border-slate-100 pt-4 mt-4 first:border-t-0 first:pt-0 first:mt-0'
 const LABEL_CLASS = 'text-[11px] font-semibold text-slate-400 uppercase tracking-wider'
 
+// VISION のラスボス: React 側で生成した内容を Flutter キャンバスエディタへハンドオフする
+const FLUTTER_APP_BASE_URL = 'https://design-canvas-flutter-13nosuis-projects.vercel.app'
+
+function buildHandoffUrl(project) {
+  const payload = {
+    title: project.title,
+    icon: project.icon,
+    summary: project.summary,
+    prompt: project.prompt,
+    meta: project.meta,
+    detail: project.detail,
+  }
+  const json = JSON.stringify(payload)
+  // base64url エンコード
+  const base64 = btoa(unescape(encodeURIComponent(json)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '')
+  return `${FLUTTER_APP_BASE_URL}/import?data=${base64}`
+}
+
 export function DetailDrawer({ project, onClose }) {
   // ESC でクローズ
   useEffect(() => {
@@ -65,6 +86,24 @@ export function DetailDrawer({ project, onClose }) {
             <DetailBody detail={detail} isLoading={isLoading} />
           )}
         </div>
+
+        {/* Flutter キャンバスへのハンドオフ — VISION のクライマックス */}
+        {!error && detail && !isLoading && (
+          <footer className="sticky bottom-0 bg-white border-t border-slate-200 px-6 py-4 flex items-center justify-between gap-3">
+            <span className="text-xs text-slate-500">
+              この設計を Flutter キャンバスに渡す
+            </span>
+            <a
+              href={buildHandoffUrl(project)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-700 transition-colors"
+            >
+              Flutter で開く
+              <span aria-hidden="true">↗</span>
+            </a>
+          </footer>
+        )}
       </aside>
     </>
   )
