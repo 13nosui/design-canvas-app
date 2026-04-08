@@ -235,7 +235,6 @@ class AppBorders extends ThemeExtension<AppBorders> {
 
   const AppBorders({
     required this.borderWidth,
-    required this.borderWidth,
     required this.borderColor,
   });
 

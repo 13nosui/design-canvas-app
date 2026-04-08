@@ -36,6 +36,7 @@ VISION.md の原則 2 「Traceable Decisions」の実装である。
 | [0003](./0003-ndjson-streaming.md) | React ↔ Vercel Functions 間の NDJSON ストリーミング契約 | Accepted |
 | [0004](./0004-handoff-base64url.md) | React → Flutter ハンドオフに base64url URL パラメータ | Accepted |
 | [0005](./0005-component-file-separation.md) | Flutter コンポーネントの `.dart` + `.styles.dart` 分離 | Accepted |
+| [0006](./0006-payload-as-truth.md) | Handoff payload を "編集の真実" とし、生成コードを derive する | Accepted |
 
 ## 新しい ADR を書くタイミング
 
