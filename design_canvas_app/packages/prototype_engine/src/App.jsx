@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { AppShell, LandingHero, InformationGrid } from './components/prototypes'
-import { Badge, ProjectMeta } from './components/Badge'
+import { ProjectMeta } from './components/Badge'
 import { CommandBar } from './components/CommandBar'
-import { INITIAL_PROJECTS, ICONS, pickRandom, randomMeta } from './data/projects'
+import { INITIAL_PROJECTS } from './data/projects'
+import { generatePrototype } from './lib/generate'
 
 const NAV_ITEMS = [
   { label: 'Projects', href: '#', active: true },
@@ -15,6 +16,14 @@ const BASE_CARD =
   'rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow cursor-pointer card-enter'
 const GHOST_CARD =
   'rounded-xl border border-dashed border-blue-300 bg-blue-50/50 p-5 animate-pulse'
+const ERROR_CARD =
+  'rounded-xl border border-red-200 bg-red-50 p-5 shadow-sm card-enter'
+
+function cardClassFn(item) {
+  if (item.generating) return GHOST_CARD
+  if (item.error) return ERROR_CARD
+  return BASE_CARD
+}
 
 // projects → InformationGrid の items 形式に変換
 function toGridItems(projects) {
@@ -23,8 +32,11 @@ function toGridItems(projects) {
     icon: <span className="text-2xl">{p.icon}</span>,
     title: p.title,
     generating: p.generating ?? false,
+    error: p.error ?? false,
     description: p.generating ? (
-      <span className="block text-slate-400 text-sm">生成しています...</span>
+      <span className="block text-slate-400 text-sm">Claude が生成しています...</span>
+    ) : p.error ? (
+      <span className="block text-red-600 text-sm leading-relaxed">{p.summary}</span>
     ) : (
       <>
         <span className="block text-slate-500 leading-relaxed">{p.summary}</span>
@@ -37,32 +49,49 @@ function toGridItems(projects) {
 export default function App() {
   const [projects, setProjects] = useState(INITIAL_PROJECTS)
 
-  function handleGenerate(prompt) {
+  async function handleGenerate(prompt) {
     const id = `gen-${Date.now()}`
 
-    // 1. 仮カードをリスト先頭に追加
+    // 1. 仮カードを先頭に追加
     setProjects((prev) => [
       { id, icon: '⏳', title: prompt, summary: '', meta: [], generating: true },
       ...prev,
     ])
 
-    // 2. 1.5秒後に本番カードへ差し替え
-    setTimeout(() => {
+    // 2. Claude に生成を依頼して結果で差し替え
+    try {
+      const result = await generatePrototype(prompt)
       setProjects((prev) =>
         prev.map((p) =>
           p.id === id
             ? {
                 id,
-                icon: pickRandom(ICONS),
-                title: prompt,
-                summary: `「${prompt}」から生成されたプロトタイプ。ここに自動生成されたサービス概要が入ります。`,
-                meta: randomMeta(),
+                icon: result.icon,
+                title: result.title,
+                summary: result.summary,
+                meta: result.meta,
                 generating: false,
               }
             : p
         )
       )
-    }, 1500)
+    } catch (error) {
+      setProjects((prev) =>
+        prev.map((p) =>
+          p.id === id
+            ? {
+                id,
+                icon: '⚠️',
+                title: prompt,
+                summary: `生成に失敗しました: ${error.message}`,
+                meta: [],
+                generating: false,
+                error: true,
+              }
+            : p
+        )
+      )
+    }
   }
 
   return (
@@ -120,7 +149,7 @@ export default function App() {
         items={toGridItems(projects)}
         columns={3}
         containerClass="pb-12 px-6 max-w-5xl mx-auto"
-        cardClassFn={(item) => (item.generating ? GHOST_CARD : BASE_CARD)}
+        cardClassFn={cardClassFn}
         titleClass="text-sm font-semibold text-slate-800 mt-2"
         descClass="mt-1 text-sm"
       />
