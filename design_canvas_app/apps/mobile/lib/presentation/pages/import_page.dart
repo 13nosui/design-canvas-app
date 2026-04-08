@@ -4,6 +4,8 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import '../../core/utils/url_updater_stub.dart'
+    if (dart.library.html) '../../core/utils/url_updater_html.dart';
 import 'import_page.styles.dart';
 import 'import_page_sheet.dart';
 
@@ -55,6 +57,22 @@ class _ImportPageState extends State<ImportPage> {
       }
       _dirty = true;
     });
+    _persistToUrl();
+  }
+
+  /// Re-encode the current payload and write it back to the browser URL
+  /// (Web only). On desktop / mobile the call is a noop via the stub.
+  /// Best-effort — if encoding fails we just skip silently.
+  void _persistToUrl() {
+    final payload = _payload;
+    if (payload == null) return;
+    try {
+      final jsonStr = json.encode(payload);
+      final base64 = base64Url.encode(utf8.encode(jsonStr)).replaceAll('=', '');
+      updateQueryParameter('data', base64);
+    } catch (_) {
+      // swallow; never fail an edit because the URL could not update
+    }
   }
 
   @override
