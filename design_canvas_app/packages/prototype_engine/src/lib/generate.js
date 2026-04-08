@@ -1,19 +1,19 @@
-// /api/generate を呼び出し NDJSON ストリームをパースする async iterator
+// /api/* の NDJSON ストリームを async iterator として消費するヘルパー
 
-export async function* generatePrototypeStream(prompt) {
-  const res = await fetch('/api/generate', {
+async function* streamNDJSON(url, body) {
+  const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt }),
+    body: JSON.stringify(body),
   })
 
   if (!res.ok) {
     let message = `HTTP ${res.status}`
     try {
-      const body = await res.json()
-      if (body?.error) message = body.error
+      const errBody = await res.json()
+      if (errBody?.error) message = errBody.error
     } catch {
-      // ignore parse failures
+      // ignore
     }
     throw new Error(message)
   }
@@ -36,14 +36,13 @@ export async function* generatePrototypeStream(prompt) {
       while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
         const line = buffer.slice(0, newlineIndex).trim()
         buffer = buffer.slice(newlineIndex + 1)
-        if (!line) continue
-        const parsed = safeParse(line)
+        const parsed = parseLine(line)
         if (parsed) yield parsed
       }
     }
     const remaining = buffer.trim()
     if (remaining) {
-      const parsed = safeParse(remaining)
+      const parsed = parseLine(remaining)
       if (parsed) yield parsed
     }
   } finally {
@@ -51,16 +50,24 @@ export async function* generatePrototypeStream(prompt) {
   }
 }
 
-function safeParse(line) {
+function parseLine(line) {
+  if (!line) return null
+  let obj
   try {
-    const obj = JSON.parse(line)
-    if (obj?.error) throw new Error(obj.error)
-    return obj
-  } catch (error) {
-    if (error instanceof Error && error.message !== 'Unexpected end of JSON input') {
-      // 上位ストリームのエラーは投げる
-      if (line.includes('"error"')) throw error
-    }
+    obj = JSON.parse(line)
+  } catch {
     return null
   }
+  if (obj && typeof obj === 'object' && 'error' in obj && typeof obj.error === 'string') {
+    throw new Error(obj.error)
+  }
+  return obj
+}
+
+export function generatePrototypeStream(prompt) {
+  return streamNDJSON('/api/generate', { prompt })
+}
+
+export function elaboratePrototypeStream({ title, summary, prompt }) {
+  return streamNDJSON('/api/elaborate', { title, summary, prompt })
 }

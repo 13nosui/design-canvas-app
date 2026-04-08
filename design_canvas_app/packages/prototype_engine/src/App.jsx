@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { AppShell, LandingHero, InformationGrid } from './components/prototypes'
 import { ProjectMeta } from './components/Badge'
 import { CommandBar } from './components/CommandBar'
+import { DetailDrawer } from './components/DetailDrawer'
 import { INITIAL_PROJECTS } from './data/projects'
-import { generatePrototypeStream } from './lib/generate'
+import { generatePrototypeStream, elaboratePrototypeStream } from './lib/generate'
 
 const NAV_ITEMS = [
   { label: 'Projects', href: '#', active: true },
@@ -57,13 +58,14 @@ function toGridItems(projects) {
 
 export default function App() {
   const [projects, setProjects] = useState(INITIAL_PROJECTS)
+  const [selectedId, setSelectedId] = useState(null)
 
   async function handleGenerate(prompt) {
     const id = `gen-${Date.now()}`
 
     // 1. 仮カードを先頭に追加 (アイコンとタイトルはストリームで上書きされる)
     setProjects((prev) => [
-      { id, icon: '⏳', title: prompt, summary: '', meta: [], generating: true },
+      { id, icon: '⏳', title: prompt, summary: '', meta: [], generating: true, prompt },
       ...prev,
     ])
 
@@ -106,6 +108,48 @@ export default function App() {
       )
     }
   }
+
+  async function handleElaborate(project) {
+    if (!project || project.detail || project.detailLoading) return
+
+    setProjects((prev) =>
+      prev.map((p) =>
+        p.id === project.id ? { ...p, detailLoading: true, detailError: null } : p
+      )
+    )
+
+    try {
+      for await (const partial of elaboratePrototypeStream({
+        title: project.title,
+        summary: project.summary,
+        prompt: project.prompt,
+      })) {
+        setProjects((prev) =>
+          prev.map((p) => (p.id === project.id ? { ...p, detail: partial } : p))
+        )
+      }
+      setProjects((prev) =>
+        prev.map((p) => (p.id === project.id ? { ...p, detailLoading: false } : p))
+      )
+    } catch (error) {
+      setProjects((prev) =>
+        prev.map((p) =>
+          p.id === project.id
+            ? { ...p, detailLoading: false, detailError: error.message }
+            : p
+        )
+      )
+    }
+  }
+
+  function handleCardClick(item) {
+    const project = projects.find((p) => p.id === item.id)
+    if (!project || project.generating || project.error) return
+    setSelectedId(project.id)
+    handleElaborate(project)
+  }
+
+  const selectedProject = selectedId ? projects.find((p) => p.id === selectedId) : null
 
   return (
     <AppShell
@@ -165,7 +209,10 @@ export default function App() {
         cardClassFn={cardClassFn}
         titleClass="text-sm font-semibold text-slate-800 mt-2"
         descClass="mt-1 text-sm"
+        onItemClick={handleCardClick}
+        isItemDisabled={(item) => item.generating || item.error}
       />
+      <DetailDrawer project={selectedProject} onClose={() => setSelectedId(null)} />
     </AppShell>
   )
 }
