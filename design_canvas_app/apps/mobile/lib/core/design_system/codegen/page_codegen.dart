@@ -31,11 +31,18 @@ class GeneratedPage {
   final GeneratedFile styles;
   final String className;
   final String slug;
+
+  /// The raw screen payload this page was generated from. Exposed so that
+  /// UIs can render a live preview (see `page_preview.dart`) from the
+  /// exact same input, without re-parsing the generated Dart source.
+  final Map<String, dynamic> sourceScreen;
+
   const GeneratedPage({
     required this.dart,
     required this.styles,
     required this.className,
     required this.slug,
+    required this.sourceScreen,
   });
 }
 
@@ -70,6 +77,7 @@ GeneratedPage generatePageFromScreen({
     styles: GeneratedFile(path: stylesPath, content: stylesContent),
     className: className,
     slug: slug,
+    sourceScreen: screen,
   );
 }
 

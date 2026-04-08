@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/design_system/codegen/page_codegen.dart';
+import '../../core/design_system/codegen/page_preview.dart';
 import '../../core/utils/page_file_exporter_stub.dart'
     if (dart.library.io) '../../core/utils/page_file_exporter_io.dart';
 import 'import_page.styles.dart';
@@ -124,13 +125,11 @@ class _GeneratedPagesSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      initialChildSize: 0.75,
-      minChildSize: 0.4,
-      maxChildSize: 0.95,
-      expand: false,
-      builder: (ctx, scrollController) {
-        return Column(
+    return FractionallySizedBox(
+      heightFactor: 0.88,
+      child: DefaultTabController(
+        length: 2,
+        child: Column(
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 16, 16, 8),
@@ -138,7 +137,7 @@ class _GeneratedPagesSheet extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      '${pages.length * 2} 個のファイルを生成しました',
+                      '${pages.length} ページ / ${pages.length * 2} ファイル を生成',
                       style: ImportPageStyles.itemTitleStyle,
                     ),
                   ),
@@ -146,7 +145,7 @@ class _GeneratedPagesSheet extends StatelessWidget {
                     TextButton.icon(
                       icon: const Icon(Icons.save_alt, size: 16),
                       label: const Text('ファイルに書き出す'),
-                      onPressed: () => _writeToDisk(ctx),
+                      onPressed: () => _writeToDisk(context),
                     ),
                   TextButton.icon(
                     icon: const Icon(Icons.copy_all, size: 16),
@@ -155,8 +154,8 @@ class _GeneratedPagesSheet extends StatelessWidget {
                       await Clipboard.setData(
                         ClipboardData(text: _combinedSource),
                       );
-                      if (!ctx.mounted) return;
-                      ScaffoldMessenger.of(ctx).showSnackBar(
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('クリップボードにコピーしました'),
                           duration: Duration(seconds: 2),
@@ -166,27 +165,86 @@ class _GeneratedPagesSheet extends StatelessWidget {
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(ctx).pop(),
+                    onPressed: () => Navigator.of(context).pop(),
                   ),
                 ],
               ),
             ),
-            const Divider(height: 1),
+            const TabBar(
+              tabs: [
+                Tab(icon: Icon(Icons.phone_iphone, size: 18), text: 'プレビュー'),
+                Tab(icon: Icon(Icons.code, size: 18), text: 'コード'),
+              ],
+              labelColor: Color(0xFF0F172A),
+              unselectedLabelColor: Color(0xFF94A3B8),
+              indicatorColor: Color(0xFF0F172A),
+            ),
             Expanded(
-              child: ListView.builder(
-                controller: scrollController,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 16),
-                itemCount: pages.length * 2,
-                itemBuilder: (ctx, index) {
-                  final page = pages[index ~/ 2];
-                  final file = index.isEven ? page.dart : page.styles;
-                  return _GeneratedFileBlock(file: file);
-                },
+              child: TabBarView(
+                children: [
+                  _PreviewTab(pages: pages),
+                  _CodeTab(pages: pages),
+                ],
               ),
             ),
           ],
-        );
+        ),
+      ),
+    );
+  }
+}
+
+class _PreviewTab extends StatelessWidget {
+  const _PreviewTab({required this.pages});
+  final List<GeneratedPage> pages;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color(0xFFF1F5F9),
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        itemCount: pages.length,
+        itemBuilder: (ctx, index) {
+          final page = pages[index];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 24),
+            child: Column(
+              children: [
+                Text(
+                  '${page.className}Page',
+                  style: ImportPageStyles.generatedFileLabelStyle.copyWith(
+                    color: const Color(0xFF64748B),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Center(
+                  child: PhoneFrame(
+                    child: GeneratedPagePreview(screen: page.sourceScreen),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _CodeTab extends StatelessWidget {
+  const _CodeTab({required this.pages});
+  final List<GeneratedPage> pages;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      itemCount: pages.length * 2,
+      itemBuilder: (ctx, index) {
+        final page = pages[index ~/ 2];
+        final file = index.isEven ? page.dart : page.styles;
+        return _GeneratedFileBlock(file: file);
       },
     );
   }
