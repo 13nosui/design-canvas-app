@@ -154,6 +154,39 @@ class _ImportPageState extends State<ImportPage> {
     _persistToUrl();
   }
 
+  /// Initialize a blank payload template so the user can start from
+  /// scratch without a React-generated handoff. This is the "zero-to-one"
+  /// entry: one empty screen with two placeholder sections.
+  void _startBlank() {
+    setState(() {
+      _payload = <String, dynamic>{
+        'title': '新規プロジェクト',
+        'icon': '✨',
+        'summary': '1〜2 行の概要',
+        'prompt': '(手動作成)',
+        'meta': <Map<String, dynamic>>[],
+        'detail': <String, dynamic>{
+          'screens': <Map<String, dynamic>>[
+            {
+              'name': 'ホーム',
+              'purpose': 'この画面の目的',
+              'sections': <Map<String, dynamic>>[
+                {'label': 'アクション', 'body': 'ユーザーがここで取れる操作'},
+                {'label': '表示情報', 'body': 'この画面に表示するデータ'},
+              ],
+            },
+          ],
+          'userFlow': '',
+          'apis': <Map<String, dynamic>>[],
+          'stack': <String>[],
+          'risks': <String>[],
+        },
+      };
+      _dirty = true;
+    });
+    _persistToUrl();
+  }
+
   /// Re-encode the current payload and write it back to the browser URL
   /// (Web only). On desktop / mobile the call is a noop via the stub.
   /// Best-effort — if encoding fails we just skip silently.
@@ -210,7 +243,7 @@ class _ImportPageState extends State<ImportPage> {
         ),
       ),
       body: payload == null
-          ? const _EmptyState()
+          ? _EmptyState(onStartBlank: _startBlank)
           : _ImportBody(
               payload: payload,
               onEdit: _editAtPath,
@@ -251,7 +284,8 @@ Map<String, dynamic>? _decodePayload(String? encoded) {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  const _EmptyState({required this.onStartBlank});
+  final VoidCallback onStartBlank;
 
   @override
   Widget build(BuildContext context) {
@@ -260,18 +294,32 @@ class _EmptyState extends StatelessWidget {
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: const [
-            Icon(Icons.error_outline, size: 48, color: Color(0xFF94A3B8)),
-            SizedBox(height: 16),
-            Text(
-              'インポートデータを読み取れませんでした',
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const Icon(Icons.auto_awesome_outlined,
+                size: 48, color: Color(0xFF94A3B8)),
+            const SizedBox(height: 16),
+            const Text(
+              'インポートデータがありません',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
-            SizedBox(height: 8),
-            Text(
-              'URL の ?data= パラメータが正しい base64 形式ではありません。',
+            const SizedBox(height: 8),
+            const Text(
+              'React からハンドオフされた URL にアクセスするか、ゼロから設計を始められます。',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF0F172A),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 20, vertical: 14),
+              ),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('新規プロジェクトを作成'),
+              onPressed: onStartBlank,
             ),
           ],
         ),
