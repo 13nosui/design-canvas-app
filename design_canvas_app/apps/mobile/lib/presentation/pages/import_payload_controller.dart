@@ -302,6 +302,59 @@ class ImportPayloadController extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ---------- Meta badges (top-level payload.meta) ----------
+
+  static const List<String> metaColors = ['green', 'blue', 'yellow', 'slate'];
+
+  List<dynamic>? _ensureMetaList() {
+    final payload = _payload;
+    if (payload == null) return null;
+    var meta = payload['meta'];
+    if (meta is! List) {
+      meta = <Map<String, dynamic>>[];
+      payload['meta'] = meta;
+    } else if (meta is! List<dynamic>) {
+      meta = meta.toList();
+      payload['meta'] = meta;
+    }
+    return meta as List<dynamic>;
+  }
+
+  void addMeta() {
+    _pushHistory();
+    final meta = _ensureMetaList();
+    if (meta == null) return;
+    meta.add(<String, dynamic>{'label': 'ラベル', 'color': 'slate'});
+    _dirty = true;
+    _persistToUrl();
+    notifyListeners();
+  }
+
+  void removeMeta(int index) {
+    _pushHistory();
+    final meta = _ensureMetaList();
+    if (meta == null || index < 0 || index >= meta.length) return;
+    meta.removeAt(index);
+    _dirty = true;
+    _persistToUrl();
+    notifyListeners();
+  }
+
+  void cycleMetaColor(int index) {
+    _pushHistory();
+    final meta = _ensureMetaList();
+    if (meta == null || index < 0 || index >= meta.length) return;
+    final entry = meta[index];
+    if (entry is! Map) return;
+    final current = (entry['color'] as String?) ?? 'slate';
+    final i = metaColors.indexOf(current);
+    final next = metaColors[(i + 1) % metaColors.length];
+    entry['color'] = next;
+    _dirty = true;
+    _persistToUrl();
+    notifyListeners();
+  }
+
   /// Re-encode payload to base64url and update the browser URL (web only).
   /// Best-effort — never throws.
   void _persistToUrl() {

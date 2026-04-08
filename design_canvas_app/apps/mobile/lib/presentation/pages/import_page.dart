@@ -130,6 +130,9 @@ class _ImportPageState extends State<ImportPage> {
                     onRemoveStack: _controller.removeStack,
                     onAddRisk: _controller.addRisk,
                     onRemoveRisk: _controller.removeRisk,
+                    onAddMeta: _controller.addMeta,
+                    onRemoveMeta: _controller.removeMeta,
+                    onCycleMetaColor: _controller.cycleMetaColor,
                   ),
                 ),
               ],
@@ -224,6 +227,9 @@ class _ImportBody extends StatelessWidget {
     required this.onRemoveStack,
     required this.onAddRisk,
     required this.onRemoveRisk,
+    required this.onAddMeta,
+    required this.onRemoveMeta,
+    required this.onCycleMetaColor,
   });
   final Map<String, dynamic> payload;
   final EditAtPath onEdit;
@@ -237,6 +243,9 @@ class _ImportBody extends StatelessWidget {
   final ValueChanged<int> onRemoveStack;
   final VoidCallback onAddRisk;
   final ValueChanged<int> onRemoveRisk;
+  final VoidCallback onAddMeta;
+  final ValueChanged<int> onRemoveMeta;
+  final ValueChanged<int> onCycleMetaColor;
 
   @override
   Widget build(BuildContext context) {
@@ -265,10 +274,14 @@ class _ImportBody extends StatelessWidget {
                   prompt: prompt,
                   onEdit: onEdit,
                 ),
-                if (meta.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  _MetaRow(meta: meta),
-                ],
+                const SizedBox(height: 16),
+                _MetaRow(
+                  meta: meta,
+                  onEdit: onEdit,
+                  onAdd: onAddMeta,
+                  onRemove: onRemoveMeta,
+                  onCycleColor: onCycleMetaColor,
+                ),
                 if (detail != null) ..._buildDetailSections(detail),
               ],
             ),
@@ -394,31 +407,100 @@ class _Hero extends StatelessWidget {
 }
 
 class _MetaRow extends StatelessWidget {
-  const _MetaRow({required this.meta});
+  const _MetaRow({
+    required this.meta,
+    required this.onEdit,
+    required this.onAdd,
+    required this.onRemove,
+    required this.onCycleColor,
+  });
   final List<Map<String, dynamic>> meta;
+  final EditAtPath onEdit;
+  final VoidCallback onAdd;
+  final ValueChanged<int> onRemove;
+  final ValueChanged<int> onCycleColor;
 
   @override
   Widget build(BuildContext context) {
     return Wrap(
       spacing: 6,
       runSpacing: 6,
-      children: meta.map((m) {
-        final label = (m['label'] as String?) ?? '';
-        final color = (m['color'] as String?) ?? 'slate';
-        final bg = ImportPageStyles.statusBackgrounds[color] ?? ImportPageStyles.statusBackgrounds['slate']!;
-        final fg = ImportPageStyles.statusForegrounds[color] ?? ImportPageStyles.statusForegrounds['slate']!;
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: BorderRadius.circular(4),
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        ...meta.asMap().entries.map((entry) {
+          final i = entry.key;
+          final m = entry.value;
+          final label = (m['label'] as String?) ?? '';
+          final color = (m['color'] as String?) ?? 'slate';
+          final bg = ImportPageStyles.statusBackgrounds[color] ??
+              ImportPageStyles.statusBackgrounds['slate']!;
+          final fg = ImportPageStyles.statusForegrounds[color] ??
+              ImportPageStyles.statusForegrounds['slate']!;
+          return Container(
+            padding: const EdgeInsets.fromLTRB(8, 3, 3, 3),
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                EditableField(
+                  value: label,
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: fg,
+                      fontWeight: FontWeight.w600),
+                  label: 'バッジラベル',
+                  onChanged: (v) => onEdit(['meta', i, 'label'], v),
+                ),
+                InkWell(
+                  onTap: () => onCycleColor(i),
+                  borderRadius: BorderRadius.circular(3),
+                  child: Padding(
+                    padding: const EdgeInsets.all(2),
+                    child: Icon(Icons.palette_outlined, size: 11, color: fg),
+                  ),
+                ),
+                InkWell(
+                  onTap: () => onRemove(i),
+                  borderRadius: BorderRadius.circular(3),
+                  child: Padding(
+                    padding: const EdgeInsets.all(2),
+                    child: Icon(Icons.close, size: 11, color: fg),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+        InkWell(
+          onTap: onAdd,
+          borderRadius: BorderRadius.circular(4),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: const Color(0xFFCBD5E1)),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.add, size: 11, color: Color(0xFF64748B)),
+                SizedBox(width: 3),
+                Text(
+                  'バッジ',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF64748B),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ),
-          child: Text(
-            label,
-            style: TextStyle(fontSize: 11, color: fg, fontWeight: FontWeight.w600),
-          ),
-        );
-      }).toList(),
+        ),
+      ],
     );
   }
 }
