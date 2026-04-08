@@ -82,6 +82,25 @@ class ImportPageStyles {
   static const sectionGap = 32.0; // TODO: New Token Candidate - spaceSection
   static const itemGap = 12.0;
 
+  // Import 実行ボタン / 生成プレビュー
+  static const importButtonColor = Color(0xFF0F172A); // TODO: New Token Candidate - colorActionPrimary
+  static const importButtonForeground = Color(0xFFFFFFFF);
+  static const importSheetBackground = Color(0xFFFFFFFF);
+  static const generatedFileBackground = Color(0xFF0F172A);
+  static const generatedFileForeground = Color(0xFFE2E8F0);
+  static const generatedFileLabelStyle = TextStyle(
+    fontFamily: 'monospace',
+    fontSize: 11,
+    fontWeight: FontWeight.w600,
+    color: Color(0xFF60A5FA),
+  );
+  static const generatedFileCodeStyle = TextStyle(
+    fontFamily: 'monospace',
+    fontSize: 11,
+    height: 1.5,
+    color: Color(0xFFE2E8F0),
+  );
+
   // ステータスバッジ
   static const Map<String, Color> statusBackgrounds = {
     'green': Color(0xFFD1FAE5),

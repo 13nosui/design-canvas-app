@@ -4,6 +4,8 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../../core/design_system/codegen/page_codegen.dart';
 import 'import_page.styles.dart';
 
 class ImportPage extends StatelessWidget {
@@ -36,6 +38,178 @@ class ImportPage extends StatelessWidget {
       body: payload == null
           ? const _EmptyState()
           : _ImportBody(payload: payload),
+      floatingActionButton: payload == null
+          ? null
+          : _ImportActionButton(payload: payload),
+    );
+  }
+}
+
+class _ImportActionButton extends StatelessWidget {
+  const _ImportActionButton({required this.payload});
+  final Map<String, dynamic> payload;
+
+  @override
+  Widget build(BuildContext context) {
+    return FloatingActionButton.extended(
+      backgroundColor: ImportPageStyles.importButtonColor,
+      foregroundColor: ImportPageStyles.importButtonForeground,
+      icon: const Icon(Icons.code, size: 18),
+      label: const Text('キャンバスに取り込む'),
+      onPressed: () {
+        final pages = generatePagesFromPayload(payload);
+        if (pages.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('screens が空なので生成するものがありません'),
+            ),
+          );
+          return;
+        }
+        showModalBottomSheet<void>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: ImportPageStyles.importSheetBackground,
+          builder: (ctx) => _GeneratedPagesSheet(pages: pages),
+        );
+      },
+    );
+  }
+}
+
+class _GeneratedPagesSheet extends StatelessWidget {
+  const _GeneratedPagesSheet({required this.pages});
+  final List<GeneratedPage> pages;
+
+  String get _combinedSource {
+    final buffer = StringBuffer();
+    for (final p in pages) {
+      buffer
+        ..writeln('/* === lib/${p.dart.path} === */')
+        ..writeln(p.dart.content)
+        ..writeln('/* === lib/${p.styles.path} === */')
+        ..writeln(p.styles.content);
+    }
+    return buffer.toString();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.75,
+      minChildSize: 0.4,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (ctx, scrollController) {
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 16, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${pages.length * 2} 個のファイルを生成しました',
+                      style: ImportPageStyles.itemTitleStyle,
+                    ),
+                  ),
+                  TextButton.icon(
+                    icon: const Icon(Icons.copy_all, size: 16),
+                    label: const Text('全てコピー'),
+                    onPressed: () async {
+                      await Clipboard.setData(
+                        ClipboardData(text: _combinedSource),
+                      );
+                      if (!ctx.mounted) return;
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        const SnackBar(
+                          content: Text('クリップボードにコピーしました'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(ctx).pop(),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView.builder(
+                controller: scrollController,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 16),
+                itemCount: pages.length * 2,
+                itemBuilder: (ctx, index) {
+                  final page = pages[index ~/ 2];
+                  final file = index.isEven ? page.dart : page.styles;
+                  return _GeneratedFileBlock(file: file);
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _GeneratedFileBlock extends StatelessWidget {
+  const _GeneratedFileBlock({required this.file});
+  final GeneratedFile file;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: ImportPageStyles.generatedFileBackground,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 8, 6),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'lib/${file.path}',
+                    style: ImportPageStyles.generatedFileLabelStyle,
+                  ),
+                ),
+                InkWell(
+                  onTap: () async {
+                    await Clipboard.setData(ClipboardData(text: file.content));
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('${file.path} をコピーしました'),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                  child: const Padding(
+                    padding: EdgeInsets.all(4),
+                    child: Icon(Icons.copy, size: 14, color: Color(0xFF94A3B8)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            child: SelectableText(
+              file.content,
+              style: ImportPageStyles.generatedFileCodeStyle,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
