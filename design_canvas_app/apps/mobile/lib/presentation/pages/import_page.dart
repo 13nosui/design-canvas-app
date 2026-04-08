@@ -8,6 +8,7 @@ import '../../core/utils/url_updater_stub.dart'
     if (dart.library.html) '../../core/utils/url_updater_html.dart';
 import 'import_page.styles.dart';
 import 'import_page_editors.dart';
+import 'import_page_live_preview.dart';
 import 'import_page_sheet.dart';
 
 class ImportPage extends StatefulWidget {
@@ -24,6 +25,7 @@ class ImportPage extends StatefulWidget {
 class _ImportPageState extends State<ImportPage> {
   Map<String, dynamic>? _payload;
   bool _dirty = false;
+  bool _showLivePreview = false;
 
   @override
   void initState() {
@@ -323,22 +325,46 @@ class _ImportPageState extends State<ImportPage> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).maybePop(),
         ),
+        actions: payload == null
+            ? null
+            : [
+                IconButton(
+                  tooltip: _showLivePreview
+                      ? 'ライブプレビューを非表示'
+                      : 'ライブプレビューを表示',
+                  icon: Icon(
+                    _showLivePreview
+                        ? Icons.visibility
+                        : Icons.visibility_outlined,
+                  ),
+                  onPressed: () => setState(
+                      () => _showLivePreview = !_showLivePreview),
+                ),
+              ],
       ),
       body: payload == null
           ? _EmptyState(onStartBlank: _startBlank)
-          : _ImportBody(
-              payload: payload,
-              onEdit: _editAtPath,
-              onAddScreen: _addScreen,
-              onRemoveScreen: _removeScreen,
-              onAddSection: _addSection,
-              onRemoveSection: _removeSection,
-              onAddApi: _addApi,
-              onRemoveApi: _removeApi,
-              onAddStack: _addStack,
-              onRemoveStack: _removeStack,
-              onAddRisk: _addRisk,
-              onRemoveRisk: _removeRisk,
+          : Column(
+              children: [
+                if (_showLivePreview)
+                  LivePreviewPanel(payload: payload),
+                Expanded(
+                  child: _ImportBody(
+                    payload: payload,
+                    onEdit: _editAtPath,
+                    onAddScreen: _addScreen,
+                    onRemoveScreen: _removeScreen,
+                    onAddSection: _addSection,
+                    onRemoveSection: _removeSection,
+                    onAddApi: _addApi,
+                    onRemoveApi: _removeApi,
+                    onAddStack: _addStack,
+                    onRemoveStack: _removeStack,
+                    onAddRisk: _addRisk,
+                    onRemoveRisk: _removeRisk,
+                  ),
+                ),
+              ],
             ),
       floatingActionButton: payload == null
           ? null
