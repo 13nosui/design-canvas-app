@@ -397,7 +397,12 @@ class _Hero extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(icon, style: const TextStyle(fontSize: ImportPageStyles.heroIconSize)),
+        EditableField(
+          value: icon,
+          style: const TextStyle(fontSize: ImportPageStyles.heroIconSize),
+          label: 'アイコン (絵文字 1 文字)',
+          onChanged: (v) => onEdit(['icon'], v),
+        ),
         const SizedBox(height: ImportPageStyles.heroSpacing),
         EditableField(
           value: title,
