@@ -60,6 +60,99 @@ class _ImportPageState extends State<ImportPage> {
     _persistToUrl();
   }
 
+  /// Ensure `payload.detail.screens` exists and is a growable List, then
+  /// return it. Used by structural add/remove helpers.
+  List<dynamic>? _ensureScreensList() {
+    final payload = _payload;
+    if (payload == null) return null;
+    var detail = payload['detail'];
+    if (detail is! Map<String, dynamic>) {
+      detail = <String, dynamic>{};
+      payload['detail'] = detail;
+    }
+    var screens = (detail as Map<String, dynamic>)['screens'];
+    if (screens is! List) {
+      screens = <dynamic>[];
+      detail['screens'] = screens;
+    } else if (screens is! List<dynamic>) {
+      screens = screens.toList();
+      detail['screens'] = screens;
+    }
+    return screens as List<dynamic>;
+  }
+
+  void _addScreen() {
+    setState(() {
+      final screens = _ensureScreensList();
+      if (screens == null) return;
+      screens.add(<String, dynamic>{
+        'name': '新規画面',
+        'purpose': 'この画面で何ができるかを書く',
+        'sections': <Map<String, dynamic>>[
+          {'label': 'アクション', 'body': 'ユーザーがここで取れる操作'},
+          {'label': '表示情報', 'body': 'この画面に表示するデータ'},
+        ],
+      });
+      _dirty = true;
+    });
+    _persistToUrl();
+  }
+
+  void _removeScreen(int index) {
+    setState(() {
+      final screens = _ensureScreensList();
+      if (screens == null || index < 0 || index >= screens.length) return;
+      screens.removeAt(index);
+      _dirty = true;
+    });
+    _persistToUrl();
+  }
+
+  List<dynamic>? _ensureSectionsList(int screenIndex) {
+    final screens = _ensureScreensList();
+    if (screens == null || screenIndex < 0 || screenIndex >= screens.length) {
+      return null;
+    }
+    final screen = screens[screenIndex];
+    if (screen is! Map<String, dynamic>) return null;
+    var sections = screen['sections'];
+    if (sections is! List) {
+      sections = <Map<String, dynamic>>[];
+      screen['sections'] = sections;
+    } else if (sections is! List<dynamic>) {
+      sections = sections.toList();
+      screen['sections'] = sections;
+    }
+    return sections as List<dynamic>;
+  }
+
+  void _addSection(int screenIndex) {
+    setState(() {
+      final sections = _ensureSectionsList(screenIndex);
+      if (sections == null) return;
+      sections.add(<String, dynamic>{
+        'label': 'ラベル',
+        'body': '本文',
+      });
+      _dirty = true;
+    });
+    _persistToUrl();
+  }
+
+  void _removeSection(int screenIndex, int sectionIndex) {
+    setState(() {
+      final sections = _ensureSectionsList(screenIndex);
+      if (sections == null ||
+          sectionIndex < 0 ||
+          sectionIndex >= sections.length) {
+        return;
+      }
+      sections.removeAt(sectionIndex);
+      _dirty = true;
+    });
+    _persistToUrl();
+  }
+
   /// Re-encode the current payload and write it back to the browser URL
   /// (Web only). On desktop / mobile the call is a noop via the stub.
   /// Best-effort — if encoding fails we just skip silently.
@@ -117,7 +210,14 @@ class _ImportPageState extends State<ImportPage> {
       ),
       body: payload == null
           ? const _EmptyState()
-          : _ImportBody(payload: payload, onEdit: _editAtPath),
+          : _ImportBody(
+              payload: payload,
+              onEdit: _editAtPath,
+              onAddScreen: _addScreen,
+              onRemoveScreen: _removeScreen,
+              onAddSection: _addSection,
+              onRemoveSection: _removeSection,
+            ),
       floatingActionButton: payload == null
           ? null
           : ImportActionButton(payload: payload),
@@ -184,9 +284,20 @@ class _EmptyState extends StatelessWidget {
 typedef EditAtPath = void Function(List<Object> path, String newValue);
 
 class _ImportBody extends StatelessWidget {
-  const _ImportBody({required this.payload, required this.onEdit});
+  const _ImportBody({
+    required this.payload,
+    required this.onEdit,
+    required this.onAddScreen,
+    required this.onRemoveScreen,
+    required this.onAddSection,
+    required this.onRemoveSection,
+  });
   final Map<String, dynamic> payload;
   final EditAtPath onEdit;
+  final VoidCallback onAddScreen;
+  final ValueChanged<int> onRemoveScreen;
+  final ValueChanged<int> onAddSection;
+  final void Function(int screenIndex, int sectionIndex) onRemoveSection;
 
   @override
   Widget build(BuildContext context) {
@@ -236,12 +347,20 @@ class _ImportBody extends StatelessWidget {
     final stack = _asListOfStrings(detail['stack']);
     final risks = _asListOfStrings(detail['risks']);
 
-    if (screens.isNotEmpty) {
-      widgets.add(_Section(
-        label: '主要画面',
-        child: _ScreensList(screens: screens, onEdit: onEdit),
-      ));
-    }
+    // Screens section is always visible (even empty) so the add button
+    // is reachable. Inside _ScreensList we render an "add screen" button
+    // at the bottom.
+    widgets.add(_Section(
+      label: '主要画面',
+      child: _ScreensList(
+        screens: screens,
+        onEdit: onEdit,
+        onAddScreen: onAddScreen,
+        onRemoveScreen: onRemoveScreen,
+        onAddSection: onAddSection,
+        onRemoveSection: onRemoveSection,
+      ),
+    ));
     if (userFlow != null && userFlow.isNotEmpty) {
       widgets.add(_Section(label: 'ユーザーフロー', child: _UserFlowText(text: userFlow)));
     }
@@ -471,44 +590,74 @@ class _Section extends StatelessWidget {
 }
 
 class _ScreensList extends StatelessWidget {
-  const _ScreensList({required this.screens, required this.onEdit});
+  const _ScreensList({
+    required this.screens,
+    required this.onEdit,
+    required this.onAddScreen,
+    required this.onRemoveScreen,
+    required this.onAddSection,
+    required this.onRemoveSection,
+  });
   final List<Map<String, dynamic>> screens;
   final EditAtPath onEdit;
+  final VoidCallback onAddScreen;
+  final ValueChanged<int> onRemoveScreen;
+  final ValueChanged<int> onAddSection;
+  final void Function(int screenIndex, int sectionIndex) onRemoveSection;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: screens.asMap().entries.map((entry) {
-        final screenIndex = entry.key;
-        final s = entry.value;
-        final name = (s['name'] as String?) ?? '';
-        final purpose = (s['purpose'] as String?) ?? '';
-        final sections = _asListOfMaps(s['sections']);
-        return Container(
-          margin: const EdgeInsets.only(bottom: ImportPageStyles.itemGap),
-          padding: ImportPageStyles.cardPadding,
-          decoration: ImportPageStyles.cardDecoration,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _EditableText(
-                value: name,
-                style: ImportPageStyles.itemTitleStyle,
-                label: '画面名',
-                onChanged: (v) =>
-                    onEdit(['detail', 'screens', screenIndex, 'name'], v),
-              ),
-              const SizedBox(height: 4),
-              _EditableText(
-                value: purpose,
-                style: ImportPageStyles.itemBodyStyle,
-                label: '画面の目的',
-                multiline: true,
-                onChanged: (v) =>
-                    onEdit(['detail', 'screens', screenIndex, 'purpose'], v),
-              ),
-              if (sections.isNotEmpty) ...[
+      children: [
+        ...screens.asMap().entries.map((entry) {
+          final screenIndex = entry.key;
+          final s = entry.value;
+          final name = (s['name'] as String?) ?? '';
+          final purpose = (s['purpose'] as String?) ?? '';
+          final sections = _asListOfMaps(s['sections']);
+          return Container(
+            margin: const EdgeInsets.only(bottom: ImportPageStyles.itemGap),
+            padding: ImportPageStyles.cardPadding,
+            decoration: ImportPageStyles.cardDecoration,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _EditableText(
+                        value: name,
+                        style: ImportPageStyles.itemTitleStyle,
+                        label: '画面名',
+                        onChanged: (v) => onEdit(
+                          ['detail', 'screens', screenIndex, 'name'],
+                          v,
+                        ),
+                      ),
+                    ),
+                    _DeleteIconButton(
+                      tooltip: 'この画面を削除',
+                      onPressed: () => _confirmRemoveScreen(
+                        context,
+                        name,
+                        () => onRemoveScreen(screenIndex),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                _EditableText(
+                  value: purpose,
+                  style: ImportPageStyles.itemBodyStyle,
+                  label: '画面の目的',
+                  multiline: true,
+                  onChanged: (v) => onEdit(
+                    ['detail', 'screens', screenIndex, 'purpose'],
+                    v,
+                  ),
+                ),
                 const SizedBox(height: 10),
                 ...sections.asMap().entries.map(
                       (secEntry) => Padding(
@@ -538,14 +687,89 @@ class _ScreensList extends StatelessWidget {
                             ],
                             v,
                           ),
+                          onRemove: () =>
+                              onRemoveSection(screenIndex, secEntry.key),
                         ),
                       ),
                     ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    icon: const Icon(Icons.add, size: 14),
+                    label: const Text('セクション追加'),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      minimumSize: const Size(0, 28),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      foregroundColor: const Color(0xFF2563EB),
+                    ),
+                    onPressed: () => onAddSection(screenIndex),
+                  ),
+                ),
               ],
-            ],
+            ),
+          );
+        }),
+        OutlinedButton.icon(
+          icon: const Icon(Icons.add, size: 16),
+          label: const Text('画面を追加'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: const Color(0xFF0F172A),
+            side: const BorderSide(color: Color(0xFFCBD5E1)),
+            padding: const EdgeInsets.symmetric(vertical: 12),
           ),
-        );
-      }).toList(),
+          onPressed: onAddScreen,
+        ),
+      ],
+    );
+  }
+}
+
+Future<void> _confirmRemoveScreen(
+  BuildContext context,
+  String name,
+  VoidCallback onConfirmed,
+) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('画面を削除'),
+      content: Text('「${name.isEmpty ? '無題' : name}」を削除しますか?'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: const Text('キャンセル'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: const Color(0xFFDC2626)),
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: const Text('削除'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed == true) onConfirmed();
+}
+
+class _DeleteIconButton extends StatelessWidget {
+  const _DeleteIconButton({required this.tooltip, required this.onPressed});
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(4),
+        child: const Padding(
+          padding: EdgeInsets.all(4),
+          child: Icon(Icons.close, size: 14, color: Color(0xFF94A3B8)),
+        ),
+      ),
     );
   }
 }
@@ -556,11 +780,13 @@ class _SectionSubCard extends StatelessWidget {
     required this.body,
     required this.onEditLabel,
     required this.onEditBody,
+    required this.onRemove,
   });
   final String label;
   final String body;
   final ValueChanged<String> onEditLabel;
   final ValueChanged<String> onEditBody;
+  final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -574,16 +800,27 @@ class _SectionSubCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _EditableText(
-            value: label,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.3,
-              color: Color(0xFF475569),
-            ),
-            label: 'セクションラベル',
-            onChanged: onEditLabel,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _EditableText(
+                  value: label,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
+                    color: Color(0xFF475569),
+                  ),
+                  label: 'セクションラベル',
+                  onChanged: onEditLabel,
+                ),
+              ),
+              _DeleteIconButton(
+                tooltip: 'このセクションを削除',
+                onPressed: onRemove,
+              ),
+            ],
           ),
           const SizedBox(height: 4),
           _EditableText(
