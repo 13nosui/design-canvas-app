@@ -154,6 +154,68 @@ class _ImportPageState extends State<ImportPage> {
     _persistToUrl();
   }
 
+  List<dynamic>? _ensureDetailList(String key) {
+    final payload = _payload;
+    if (payload == null) return null;
+    var detail = payload['detail'];
+    if (detail is! Map<String, dynamic>) {
+      detail = <String, dynamic>{};
+      payload['detail'] = detail;
+    }
+    var list = (detail as Map<String, dynamic>)[key];
+    if (list is! List) {
+      list = <dynamic>[];
+      detail[key] = list;
+    } else if (list is! List<dynamic>) {
+      list = list.toList();
+      detail[key] = list;
+    }
+    return list as List<dynamic>;
+  }
+
+  void _addApi() {
+    setState(() {
+      final apis = _ensureDetailList('apis');
+      if (apis == null) return;
+      apis.add(<String, dynamic>{
+        'name': 'GET /endpoint',
+        'description': 'この API が返すもの',
+      });
+      _dirty = true;
+    });
+    _persistToUrl();
+  }
+
+  void _removeApi(int index) {
+    setState(() {
+      final apis = _ensureDetailList('apis');
+      if (apis == null || index < 0 || index >= apis.length) return;
+      apis.removeAt(index);
+      _dirty = true;
+    });
+    _persistToUrl();
+  }
+
+  void _addStack() {
+    setState(() {
+      final stack = _ensureDetailList('stack');
+      if (stack == null) return;
+      stack.add('新規項目');
+      _dirty = true;
+    });
+    _persistToUrl();
+  }
+
+  void _removeStack(int index) {
+    setState(() {
+      final stack = _ensureDetailList('stack');
+      if (stack == null || index < 0 || index >= stack.length) return;
+      stack.removeAt(index);
+      _dirty = true;
+    });
+    _persistToUrl();
+  }
+
   /// Initialize a blank payload template so the user can start from
   /// scratch without a React-generated handoff. This is the "zero-to-one"
   /// entry: one empty screen with two placeholder sections.
@@ -251,6 +313,10 @@ class _ImportPageState extends State<ImportPage> {
               onRemoveScreen: _removeScreen,
               onAddSection: _addSection,
               onRemoveSection: _removeSection,
+              onAddApi: _addApi,
+              onRemoveApi: _removeApi,
+              onAddStack: _addStack,
+              onRemoveStack: _removeStack,
             ),
       floatingActionButton: payload == null
           ? null
@@ -336,6 +402,10 @@ class _ImportBody extends StatelessWidget {
     required this.onRemoveScreen,
     required this.onAddSection,
     required this.onRemoveSection,
+    required this.onAddApi,
+    required this.onRemoveApi,
+    required this.onAddStack,
+    required this.onRemoveStack,
   });
   final Map<String, dynamic> payload;
   final EditAtPath onEdit;
@@ -343,6 +413,10 @@ class _ImportBody extends StatelessWidget {
   final ValueChanged<int> onRemoveScreen;
   final ValueChanged<int> onAddSection;
   final void Function(int screenIndex, int sectionIndex) onRemoveSection;
+  final VoidCallback onAddApi;
+  final ValueChanged<int> onRemoveApi;
+  final VoidCallback onAddStack;
+  final ValueChanged<int> onRemoveStack;
 
   @override
   Widget build(BuildContext context) {
@@ -409,12 +483,26 @@ class _ImportBody extends StatelessWidget {
     if (userFlow != null && userFlow.isNotEmpty) {
       widgets.add(_Section(label: 'ユーザーフロー', child: _UserFlowText(text: userFlow)));
     }
-    if (apis.isNotEmpty) {
-      widgets.add(_Section(label: 'API / エンドポイント', child: _ApisList(apis: apis)));
-    }
-    if (stack.isNotEmpty) {
-      widgets.add(_Section(label: '技術スタック候補', child: _StackChips(stack: stack)));
-    }
+    // APIs: always-visible so add button is reachable even when list is empty.
+    widgets.add(_Section(
+      label: 'API / エンドポイント',
+      child: _ApisList(
+        apis: apis,
+        onEdit: onEdit,
+        onAdd: onAddApi,
+        onRemove: onRemoveApi,
+      ),
+    ));
+    // Stack: same.
+    widgets.add(_Section(
+      label: '技術スタック候補',
+      child: _StackChips(
+        stack: stack,
+        onEdit: onEdit,
+        onAdd: onAddStack,
+        onRemove: onRemoveStack,
+      ),
+    ));
     if (risks.isNotEmpty) {
       widgets.add(_Section(label: 'リスクと論点', child: _RisksList(risks: risks)));
     }
@@ -542,67 +630,182 @@ class _UserFlowText extends StatelessWidget {
 }
 
 class _ApisList extends StatelessWidget {
-  const _ApisList({required this.apis});
+  const _ApisList({
+    required this.apis,
+    required this.onEdit,
+    required this.onAdd,
+    required this.onRemove,
+  });
   final List<Map<String, dynamic>> apis;
+  final EditAtPath onEdit;
+  final VoidCallback onAdd;
+  final ValueChanged<int> onRemove;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: apis.map((a) {
-        final name = (a['name'] as String?) ?? '';
-        final description = (a['description'] as String?) ?? '';
-        return Container(
-          margin: const EdgeInsets.only(bottom: ImportPageStyles.itemGap),
-          padding: ImportPageStyles.cardPadding,
-          decoration: ImportPageStyles.cardDecoration,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: ImportPageStyles.apiCodeBackground,
-                  borderRadius: BorderRadius.circular(4),
+      children: [
+        ...apis.asMap().entries.map((entry) {
+          final i = entry.key;
+          final a = entry.value;
+          final name = (a['name'] as String?) ?? '';
+          final description = (a['description'] as String?) ?? '';
+          return Container(
+            margin: const EdgeInsets.only(bottom: ImportPageStyles.itemGap),
+            padding: ImportPageStyles.cardPadding,
+            decoration: ImportPageStyles.cardDecoration,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: ImportPageStyles.apiCodeBackground,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: EditableField(
+                          value: name,
+                          style: ImportPageStyles.apiCodeStyle,
+                          label: 'API 名',
+                          onChanged: (v) =>
+                              onEdit(['detail', 'apis', i, 'name'], v),
+                        ),
+                      ),
+                    ),
+                    _DeleteMini(onPressed: () => onRemove(i)),
+                  ],
                 ),
-                child: Text(name, style: ImportPageStyles.apiCodeStyle),
-              ),
-              const SizedBox(height: 6),
-              Text(description, style: ImportPageStyles.itemBodyStyle),
-            ],
+                const SizedBox(height: 6),
+                EditableField(
+                  value: description,
+                  style: ImportPageStyles.itemBodyStyle,
+                  label: 'API の説明',
+                  multiline: true,
+                  onChanged: (v) =>
+                      onEdit(['detail', 'apis', i, 'description'], v),
+                ),
+              ],
+            ),
+          );
+        }),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            icon: const Icon(Icons.add, size: 14),
+            label: const Text('API を追加'),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF2563EB),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: const Size(0, 32),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            onPressed: onAdd,
           ),
-        );
-      }).toList(),
+        ),
+      ],
     );
   }
 }
 
 class _StackChips extends StatelessWidget {
-  const _StackChips({required this.stack});
+  const _StackChips({
+    required this.stack,
+    required this.onEdit,
+    required this.onAdd,
+    required this.onRemove,
+  });
   final List<String> stack;
+  final EditAtPath onEdit;
+  final VoidCallback onAdd;
+  final ValueChanged<int> onRemove;
 
   @override
   Widget build(BuildContext context) {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: stack.map((s) {
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: ImportPageStyles.chipBackground,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Text(
-            s,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: ImportPageStyles.chipForeground,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        ...stack.asMap().entries.map((entry) {
+          final i = entry.key;
+          final s = entry.value;
+          return Container(
+            padding: const EdgeInsets.fromLTRB(10, 6, 4, 6),
+            decoration: BoxDecoration(
+              color: ImportPageStyles.chipBackground,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                EditableField(
+                  value: s,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: ImportPageStyles.chipForeground,
+                  ),
+                  label: 'スタック項目',
+                  onChanged: (v) => onEdit(['detail', 'stack', i], v),
+                ),
+                _DeleteMini(onPressed: () => onRemove(i)),
+              ],
+            ),
+          );
+        }),
+        InkWell(
+          onTap: onAdd,
+          borderRadius: BorderRadius.circular(6),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: const Color(0xFFCBD5E1),
+                style: BorderStyle.solid,
+              ),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.add, size: 12, color: Color(0xFF64748B)),
+                SizedBox(width: 4),
+                Text(
+                  '追加',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+              ],
             ),
           ),
-        );
-      }).toList(),
+        ),
+      ],
+    );
+  }
+}
+
+class _DeleteMini extends StatelessWidget {
+  const _DeleteMini({required this.onPressed});
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(4),
+      child: const Padding(
+        padding: EdgeInsets.all(3),
+        child: Icon(Icons.close, size: 12, color: Color(0xFF94A3B8)),
+      ),
     );
   }
 }
