@@ -73,7 +73,7 @@ class _ImportActionButton extends StatelessWidget {
           context: context,
           isScrollControlled: true,
           backgroundColor: ImportPageStyles.importSheetBackground,
-          builder: (ctx) => _GeneratedPagesSheet(pages: pages),
+          builder: (ctx) => _GeneratedPagesSheet(pages: pages, payload: payload),
         );
       },
     );
@@ -81,8 +81,34 @@ class _ImportActionButton extends StatelessWidget {
 }
 
 class _GeneratedPagesSheet extends StatelessWidget {
-  const _GeneratedPagesSheet({required this.pages});
+  const _GeneratedPagesSheet({required this.pages, required this.payload});
   final List<GeneratedPage> pages;
+  final Map<String, dynamic> payload;
+
+  String get _projectTitle => (payload['title'] as String?) ?? '';
+  String get _icon => (payload['icon'] as String?) ?? '';
+  List<Map<String, dynamic>> get _meta => _asMaps(payload['meta']);
+  List<Map<String, dynamic>> get _apis {
+    final detail = payload['detail'];
+    if (detail is! Map) return const [];
+    return _asMaps(detail['apis']);
+  }
+
+  List<String> get _stack {
+    final detail = payload['detail'];
+    if (detail is! Map) return const [];
+    final list = detail['stack'];
+    if (list is! List) return const [];
+    return list.whereType<String>().toList(growable: false);
+  }
+
+  static List<Map<String, dynamic>> _asMaps(dynamic value) {
+    if (value is! List) return const [];
+    return value
+        .whereType<Map>()
+        .map((e) => e.cast<String, dynamic>())
+        .toList(growable: false);
+  }
 
   String get _combinedSource {
     final buffer = StringBuffer();
@@ -182,7 +208,14 @@ class _GeneratedPagesSheet extends StatelessWidget {
             Expanded(
               child: TabBarView(
                 children: [
-                  _PreviewTab(pages: pages),
+                  _PreviewTab(
+                    pages: pages,
+                    projectTitle: _projectTitle,
+                    icon: _icon,
+                    meta: _meta,
+                    apis: _apis,
+                    stack: _stack,
+                  ),
                   _CodeTab(pages: pages),
                 ],
               ),
@@ -195,8 +228,20 @@ class _GeneratedPagesSheet extends StatelessWidget {
 }
 
 class _PreviewTab extends StatelessWidget {
-  const _PreviewTab({required this.pages});
+  const _PreviewTab({
+    required this.pages,
+    required this.projectTitle,
+    required this.icon,
+    required this.meta,
+    required this.apis,
+    required this.stack,
+  });
   final List<GeneratedPage> pages;
+  final String projectTitle;
+  final String icon;
+  final List<Map<String, dynamic>> meta;
+  final List<Map<String, dynamic>> apis;
+  final List<String> stack;
 
   @override
   Widget build(BuildContext context) {
@@ -220,7 +265,14 @@ class _PreviewTab extends StatelessWidget {
                 const SizedBox(height: 8),
                 Center(
                   child: PhoneFrame(
-                    child: GeneratedPagePreview(screen: page.sourceScreen),
+                    child: GeneratedPagePreview(
+                      screen: page.sourceScreen,
+                      projectTitle: projectTitle,
+                      icon: icon,
+                      meta: meta,
+                      apis: apis,
+                      stack: stack,
+                    ),
                   ),
                 ),
               ],

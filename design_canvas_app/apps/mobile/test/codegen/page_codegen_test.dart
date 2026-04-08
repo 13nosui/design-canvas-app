@@ -142,6 +142,112 @@ void main() {
     });
   });
 
+  group('rich page generation', () {
+    test('omits meta/api/stack sections when not provided', () {
+      final page = generatePageFromScreen(
+        projectSlug: 'my_app',
+        screen: {'name': 'Home', 'purpose': 'Landing'},
+      );
+
+      expect(page.dart.content, isNot(contains('関連 API')));
+      expect(page.dart.content, isNot(contains('使用スタック')));
+      expect(page.dart.content, isNot(contains('Wrap(')));
+    });
+
+    test('emits meta badges Wrap with status colors', () {
+      final page = generatePageFromScreen(
+        projectSlug: 'my_app',
+        screen: {'name': 'Home', 'purpose': 'x'},
+        meta: [
+          {'label': '優先度高', 'color': 'green'},
+          {'label': '0.3ms', 'color': 'blue'},
+        ],
+      );
+
+      expect(page.dart.content, contains('Wrap('));
+      expect(page.dart.content, contains("'優先度高'"));
+      expect(page.dart.content, contains("'0.3ms'"));
+      expect(page.dart.content, contains('HomePageStyles.statusBgGreen'));
+      expect(page.dart.content, contains('HomePageStyles.statusFgBlue'));
+    });
+
+    test('emits API section with card per entry', () {
+      final page = generatePageFromScreen(
+        projectSlug: 'my_app',
+        screen: {'name': 'Home', 'purpose': 'x'},
+        apis: [
+          {'name': 'GET /tasks', 'description': 'Fetch today tasks'},
+          {'name': 'POST /tasks', 'description': 'Create a task'},
+        ],
+      );
+
+      expect(page.dart.content, contains("'関連 API'"));
+      expect(page.dart.content, contains("'GET /tasks'"));
+      expect(page.dart.content, contains("'Fetch today tasks'"));
+      expect(page.dart.content, contains("'POST /tasks'"));
+      expect(page.dart.content, contains('HomePageStyles.cardDecoration'));
+      expect(page.dart.content, contains('HomePageStyles.apiCodeStyle'));
+    });
+
+    test('emits stack chips', () {
+      final page = generatePageFromScreen(
+        projectSlug: 'my_app',
+        screen: {'name': 'Home', 'purpose': 'x'},
+        stack: ['Next.js', 'Supabase', 'Stripe'],
+      );
+
+      expect(page.dart.content, contains("'使用スタック'"));
+      expect(page.dart.content, contains("'Next.js'"));
+      expect(page.dart.content, contains("'Supabase'"));
+      expect(page.dart.content, contains("'Stripe'"));
+      expect(page.dart.content, contains('HomePageStyles.chipBackground'));
+    });
+
+    test('emits AppBar row with icon when provided', () {
+      final page = generatePageFromScreen(
+        projectSlug: 'my_app',
+        screen: {'name': 'Home', 'purpose': 'x'},
+        projectTitle: 'Task Manager',
+        icon: '🎯',
+      );
+
+      expect(page.dart.content, contains("'🎯'"));
+      expect(page.dart.content, contains("'Task Manager'"));
+      expect(page.dart.content, contains('Row('));
+    });
+
+    test('styles file includes all new tokens', () {
+      final page = generatePageFromScreen(
+        projectSlug: 'my_app',
+        screen: {'name': 'Home', 'purpose': 'x'},
+      );
+
+      // New style constants exist regardless of whether sections are used.
+      expect(page.styles.content, contains('statusBgGreen'));
+      expect(page.styles.content, contains('statusFgSlate'));
+      expect(page.styles.content, contains('cardDecoration'));
+      expect(page.styles.content, contains('apiCodeStyle'));
+      expect(page.styles.content, contains('chipBackground'));
+      expect(page.styles.content, contains('sectionLabelStyle'));
+      expect(page.styles.content, contains('sectionGap'));
+    });
+
+    test('escapes single quotes in API and stack entries', () {
+      final page = generatePageFromScreen(
+        projectSlug: 'my_app',
+        screen: {'name': 'Home', 'purpose': 'x'},
+        apis: [
+          {'name': "GET /it's", 'description': "User's data"},
+        ],
+        stack: ["Alice's SDK"],
+      );
+
+      expect(page.dart.content, contains(r"'GET /it\'s'"));
+      expect(page.dart.content, contains(r"'User\'s data'"));
+      expect(page.dart.content, contains(r"'Alice\'s SDK'"));
+    });
+  });
+
   group('generatePagesFromPayload', () {
     test('returns empty list for malformed payload', () {
       expect(generatePagesFromPayload({}), isEmpty);
@@ -173,6 +279,37 @@ void main() {
           p.dart.path,
           startsWith('presentation/generated/task_manager/'),
         );
+      }
+    });
+
+    test('propagates project-level context into every generated page', () {
+      final payload = {
+        'title': 'Task Manager',
+        'icon': '🎯',
+        'meta': [
+          {'label': '優先度高', 'color': 'green'},
+        ],
+        'detail': {
+          'screens': [
+            {'name': 'Dashboard', 'purpose': 'overview'},
+            {'name': 'Settings', 'purpose': 'prefs'},
+          ],
+          'apis': [
+            {'name': 'GET /tasks', 'description': 'Fetch tasks'},
+          ],
+          'stack': ['Next.js', 'Supabase'],
+        },
+      };
+
+      final pages = generatePagesFromPayload(payload);
+      expect(pages, hasLength(2));
+      for (final p in pages) {
+        expect(p.dart.content, contains("'🎯'"));
+        expect(p.dart.content, contains("'Task Manager'"));
+        expect(p.dart.content, contains("'優先度高'"));
+        expect(p.dart.content, contains("'GET /tasks'"));
+        expect(p.dart.content, contains("'Next.js'"));
+        expect(p.dart.content, contains("'Supabase'"));
       }
     });
 
