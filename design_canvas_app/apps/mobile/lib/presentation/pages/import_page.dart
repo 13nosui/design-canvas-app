@@ -11,7 +11,7 @@ import '../../core/utils/page_file_exporter_stub.dart'
     if (dart.library.io) '../../core/utils/page_file_exporter_io.dart';
 import 'import_page.styles.dart';
 
-class ImportPage extends StatelessWidget {
+class ImportPage extends StatefulWidget {
   const ImportPage({super.key, this.encodedData});
 
   /// 明示的に data を渡す経路 (テスト用途など)。
@@ -19,19 +19,82 @@ class ImportPage extends StatelessWidget {
   final String? encodedData;
 
   @override
-  Widget build(BuildContext context) {
-    final encoded = encodedData ?? _readEncodedFromUrl();
-    final payload = _decodePayload(encoded);
+  State<ImportPage> createState() => _ImportPageState();
+}
 
+class _ImportPageState extends State<ImportPage> {
+  Map<String, dynamic>? _payload;
+  bool _dirty = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final encoded = widget.encodedData ?? _readEncodedFromUrl();
+    _payload = _decodePayload(encoded);
+  }
+
+  /// Apply an edit at a nested path within the payload. `path` accepts
+  /// `String` for map keys and `int` for list indices, so e.g.
+  /// `['detail', 'screens', 0, 'name']` rewrites the first screen's name.
+  void _editAtPath(List<Object> path, String newValue) {
+    final payload = _payload;
+    if (payload == null || path.isEmpty) return;
+    setState(() {
+      dynamic current = payload;
+      for (var i = 0; i < path.length - 1; i++) {
+        final key = path[i];
+        if (current is Map && key is String) {
+          current = current[key];
+        } else if (current is List && key is int) {
+          current = current[key];
+        } else {
+          return;
+        }
+      }
+      final last = path.last;
+      if (current is Map && last is String) {
+        current[last] = newValue;
+      } else if (current is List && last is int) {
+        current[last] = newValue;
+      }
+      _dirty = true;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final payload = _payload;
     return Scaffold(
       backgroundColor: ImportPageStyles.backgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         scrolledUnderElevation: 1,
-        title: const Text(
-          'Imported from Prototype Engine',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        title: Row(
+          children: [
+            const Text(
+              'Imported from Prototype Engine',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+            if (_dirty) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  'edited',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF92400E),
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -40,7 +103,7 @@ class ImportPage extends StatelessWidget {
       ),
       body: payload == null
           ? const _EmptyState()
-          : _ImportBody(payload: payload),
+          : _ImportBody(payload: payload, onEdit: _editAtPath),
       floatingActionButton: payload == null
           ? null
           : _ImportActionButton(payload: payload),
@@ -413,9 +476,14 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
+/// Callback that mutates the payload at a nested path.
+/// See `_ImportPageState._editAtPath` for the path format.
+typedef EditAtPath = void Function(List<Object> path, String newValue);
+
 class _ImportBody extends StatelessWidget {
-  const _ImportBody({required this.payload});
+  const _ImportBody({required this.payload, required this.onEdit});
   final Map<String, dynamic> payload;
+  final EditAtPath onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -437,7 +505,13 @@ class _ImportBody extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _Hero(icon: icon, title: title, summary: summary, prompt: prompt),
+                _Hero(
+                  icon: icon,
+                  title: title,
+                  summary: summary,
+                  prompt: prompt,
+                  onEdit: onEdit,
+                ),
                 if (meta.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   _MetaRow(meta: meta),
@@ -460,7 +534,10 @@ class _ImportBody extends StatelessWidget {
     final risks = _asListOfStrings(detail['risks']);
 
     if (screens.isNotEmpty) {
-      widgets.add(_Section(label: '主要画面', child: _ScreensList(screens: screens)));
+      widgets.add(_Section(
+        label: '主要画面',
+        child: _ScreensList(screens: screens, onEdit: onEdit),
+      ));
     }
     if (userFlow != null && userFlow.isNotEmpty) {
       widgets.add(_Section(label: 'ユーザーフロー', child: _UserFlowText(text: userFlow)));
@@ -478,12 +555,135 @@ class _ImportBody extends StatelessWidget {
   }
 }
 
+/// A Text that, when tapped, opens an edit dialog and calls [onChanged]
+/// with the new value. Designed to drop-in replace any Text in the
+/// ImportPage body — pencil icon is inlined via WidgetSpan so it does not
+/// break surrounding layouts.
+class _EditableText extends StatelessWidget {
+  const _EditableText({
+    required this.value,
+    required this.style,
+    required this.label,
+    required this.onChanged,
+    this.multiline = false,
+  });
+  final String value;
+  final TextStyle style;
+  final String label;
+  final ValueChanged<String> onChanged;
+  final bool multiline;
+
+  Future<void> _openEditor(BuildContext context) async {
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => _EditDialog(
+        label: label,
+        initialValue: value,
+        multiline: multiline,
+      ),
+    );
+    if (result != null && result != value) {
+      onChanged(result);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _openEditor(context),
+      child: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(text: value.isEmpty ? '(タップして追加)' : value, style: style),
+            const WidgetSpan(
+              alignment: PlaceholderAlignment.middle,
+              child: Padding(
+                padding: EdgeInsets.only(left: 4),
+                child: Icon(
+                  Icons.edit_outlined,
+                  size: 12,
+                  color: Color(0x552563EB),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EditDialog extends StatefulWidget {
+  const _EditDialog({
+    required this.label,
+    required this.initialValue,
+    required this.multiline,
+  });
+  final String label;
+  final String initialValue;
+  final bool multiline;
+
+  @override
+  State<_EditDialog> createState() => _EditDialogState();
+}
+
+class _EditDialogState extends State<_EditDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialValue);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.label),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        maxLines: widget.multiline ? null : 1,
+        minLines: widget.multiline ? 3 : 1,
+        decoration: const InputDecoration(border: OutlineInputBorder()),
+        onSubmitted: widget.multiline
+            ? null
+            : (v) => Navigator.of(context).pop(v),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('キャンセル'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_controller.text),
+          child: const Text('保存'),
+        ),
+      ],
+    );
+  }
+}
+
 class _Hero extends StatelessWidget {
-  const _Hero({required this.icon, required this.title, required this.summary, required this.prompt});
+  const _Hero({
+    required this.icon,
+    required this.title,
+    required this.summary,
+    required this.prompt,
+    required this.onEdit,
+  });
   final String icon;
   final String title;
   final String summary;
   final String prompt;
+  final EditAtPath onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -492,13 +692,23 @@ class _Hero extends StatelessWidget {
       children: [
         Text(icon, style: const TextStyle(fontSize: ImportPageStyles.heroIconSize)),
         const SizedBox(height: ImportPageStyles.heroSpacing),
-        Text(title, style: ImportPageStyles.titleStyle),
-        if (summary.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          Text(summary, style: ImportPageStyles.summaryStyle),
-        ],
+        _EditableText(
+          value: title,
+          style: ImportPageStyles.titleStyle,
+          label: 'タイトル',
+          onChanged: (v) => onEdit(['title'], v),
+        ),
+        const SizedBox(height: 12),
+        _EditableText(
+          value: summary,
+          style: ImportPageStyles.summaryStyle,
+          label: '概要',
+          multiline: true,
+          onChanged: (v) => onEdit(['summary'], v),
+        ),
         if (prompt.isNotEmpty) ...[
           const SizedBox(height: 8),
+          // prompt は元プロンプト = 監査証跡なので編集させない
           Text('元のプロンプト: $prompt', style: ImportPageStyles.promptHintStyle),
         ],
       ],
@@ -558,16 +768,20 @@ class _Section extends StatelessWidget {
 }
 
 class _ScreensList extends StatelessWidget {
-  const _ScreensList({required this.screens});
+  const _ScreensList({required this.screens, required this.onEdit});
   final List<Map<String, dynamic>> screens;
+  final EditAtPath onEdit;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: screens.map((s) {
+      children: screens.asMap().entries.map((entry) {
+        final screenIndex = entry.key;
+        final s = entry.value;
         final name = (s['name'] as String?) ?? '';
         final purpose = (s['purpose'] as String?) ?? '';
+        final sections = _asListOfMaps(s['sections']);
         return Container(
           margin: const EdgeInsets.only(bottom: ImportPageStyles.itemGap),
           padding: ImportPageStyles.cardPadding,
@@ -575,13 +789,109 @@ class _ScreensList extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(name, style: ImportPageStyles.itemTitleStyle),
+              _EditableText(
+                value: name,
+                style: ImportPageStyles.itemTitleStyle,
+                label: '画面名',
+                onChanged: (v) =>
+                    onEdit(['detail', 'screens', screenIndex, 'name'], v),
+              ),
               const SizedBox(height: 4),
-              Text(purpose, style: ImportPageStyles.itemBodyStyle),
+              _EditableText(
+                value: purpose,
+                style: ImportPageStyles.itemBodyStyle,
+                label: '画面の目的',
+                multiline: true,
+                onChanged: (v) =>
+                    onEdit(['detail', 'screens', screenIndex, 'purpose'], v),
+              ),
+              if (sections.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                ...sections.asMap().entries.map(
+                      (secEntry) => Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: _SectionSubCard(
+                          label: (secEntry.value['label'] as String?) ?? '',
+                          body: (secEntry.value['body'] as String?) ?? '',
+                          onEditLabel: (v) => onEdit(
+                            [
+                              'detail',
+                              'screens',
+                              screenIndex,
+                              'sections',
+                              secEntry.key,
+                              'label',
+                            ],
+                            v,
+                          ),
+                          onEditBody: (v) => onEdit(
+                            [
+                              'detail',
+                              'screens',
+                              screenIndex,
+                              'sections',
+                              secEntry.key,
+                              'body',
+                            ],
+                            v,
+                          ),
+                        ),
+                      ),
+                    ),
+              ],
             ],
           ),
         );
       }).toList(),
+    );
+  }
+}
+
+class _SectionSubCard extends StatelessWidget {
+  const _SectionSubCard({
+    required this.label,
+    required this.body,
+    required this.onEditLabel,
+    required this.onEditBody,
+  });
+  final String label;
+  final String body;
+  final ValueChanged<String> onEditLabel;
+  final ValueChanged<String> onEditBody;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _EditableText(
+            value: label,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.3,
+              color: Color(0xFF475569),
+            ),
+            label: 'セクションラベル',
+            onChanged: onEditLabel,
+          ),
+          const SizedBox(height: 4),
+          _EditableText(
+            value: body,
+            style: ImportPageStyles.itemBodyStyle,
+            label: 'セクション本文',
+            multiline: true,
+            onChanged: onEditBody,
+          ),
+        ],
+      ),
     );
   }
 }
