@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'core/design_system/app_colors.dart';
 import 'core/design_system/app_spacing.dart';
@@ -10,6 +11,7 @@ import 'core/design_system/app_blur.dart';
 import 'core/design_system/app_gradients.dart';
 import 'core/design_system/theme_controller.dart';
 import 'presentation/pages/design_canvas_page.dart';
+import 'presentation/pages/import_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -187,8 +189,27 @@ class _MyAppState extends State<MyApp> {
         themeMode: _themeMode,
         theme: _buildTheme(Brightness.light, typo),
         darkTheme: _buildTheme(Brightness.dark, typo),
-        home: const DesignCanvasPage(),
+        home: const _HomeDispatcher(),
       ),
     );
+  }
+}
+
+// URL パスに応じて初期画面を切り替える軽量ディスパッチャ。
+// 本格的なルーティング (MaterialApp.router + GoRouter) への移行までの暫定実装。
+// - /import  → React 側 prototype_engine からのハンドオフを受ける ImportPage
+// - その他   → 既存の DesignCanvasPage
+class _HomeDispatcher extends StatelessWidget {
+  const _HomeDispatcher();
+
+  @override
+  Widget build(BuildContext context) {
+    if (kIsWeb) {
+      final path = Uri.base.path;
+      if (path == '/import' || path.endsWith('/import/')) {
+        return const ImportPage();
+      }
+    }
+    return const DesignCanvasPage();
   }
 }

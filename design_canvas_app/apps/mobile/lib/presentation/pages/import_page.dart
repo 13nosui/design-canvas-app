@@ -2,16 +2,20 @@
 // URL クエリ ?data=<base64url(json)> 経由で受け取り、Flutter キャンバスで表示する。
 // VISION の "思考の直結" を React → Flutter まで一筆書きで繋ぐ受け側。
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'import_page.styles.dart';
 
 class ImportPage extends StatelessWidget {
-  const ImportPage({super.key});
+  const ImportPage({super.key, this.encodedData});
+
+  /// 明示的に data を渡す経路 (テスト用途など)。
+  /// null の場合は kIsWeb 環境の Uri.base.queryParameters から自動取得する。
+  final String? encodedData;
 
   @override
   Widget build(BuildContext context) {
-    final encoded = GoRouterState.of(context).uri.queryParameters['data'];
+    final encoded = encodedData ?? _readEncodedFromUrl();
     final payload = _decodePayload(encoded);
 
     return Scaffold(
@@ -26,19 +30,22 @@ class ImportPage extends StatelessWidget {
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go('/');
-            }
-          },
+          onPressed: () => Navigator.of(context).maybePop(),
         ),
       ),
       body: payload == null
           ? const _EmptyState()
           : _ImportBody(payload: payload),
     );
+  }
+}
+
+String? _readEncodedFromUrl() {
+  if (!kIsWeb) return null;
+  try {
+    return Uri.base.queryParameters['data'];
+  } catch (_) {
+    return null;
   }
 }
 
