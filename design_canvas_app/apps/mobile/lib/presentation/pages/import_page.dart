@@ -4,12 +4,11 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import '../../core/utils/url_updater_stub.dart'
-    if (dart.library.html) '../../core/utils/url_updater_html.dart';
 import 'import_page.styles.dart';
 import 'import_page_editors.dart';
 import 'import_page_live_preview.dart';
 import 'import_page_sheet.dart';
+import 'import_payload_controller.dart';
 
 class ImportPage extends StatefulWidget {
   const ImportPage({super.key, this.encodedData});
@@ -23,272 +22,31 @@ class ImportPage extends StatefulWidget {
 }
 
 class _ImportPageState extends State<ImportPage> {
-  Map<String, dynamic>? _payload;
-  bool _dirty = false;
+  late final ImportPayloadController _controller;
   bool _showLivePreview = false;
 
   @override
   void initState() {
     super.initState();
     final encoded = widget.encodedData ?? _readEncodedFromUrl();
-    _payload = _decodePayload(encoded);
+    _controller = ImportPayloadController(_decodePayload(encoded));
+    _controller.addListener(_onControllerChanged);
   }
 
-  /// Apply an edit at a nested path within the payload. `path` accepts
-  /// `String` for map keys and `int` for list indices, so e.g.
-  /// `['detail', 'screens', 0, 'name']` rewrites the first screen's name.
-  void _editAtPath(List<Object> path, String newValue) {
-    final payload = _payload;
-    if (payload == null || path.isEmpty) return;
-    setState(() {
-      dynamic current = payload;
-      for (var i = 0; i < path.length - 1; i++) {
-        final key = path[i];
-        if (current is Map && key is String) {
-          current = current[key];
-        } else if (current is List && key is int) {
-          current = current[key];
-        } else {
-          return;
-        }
-      }
-      final last = path.last;
-      if (current is Map && last is String) {
-        current[last] = newValue;
-      } else if (current is List && last is int) {
-        current[last] = newValue;
-      }
-      _dirty = true;
-    });
-    _persistToUrl();
+  @override
+  void dispose() {
+    _controller.removeListener(_onControllerChanged);
+    _controller.dispose();
+    super.dispose();
   }
 
-  /// Ensure `payload.detail.screens` exists and is a growable List, then
-  /// return it. Used by structural add/remove helpers.
-  List<dynamic>? _ensureScreensList() {
-    final payload = _payload;
-    if (payload == null) return null;
-    var detail = payload['detail'];
-    if (detail is! Map<String, dynamic>) {
-      detail = <String, dynamic>{};
-      payload['detail'] = detail;
-    }
-    var screens = (detail as Map<String, dynamic>)['screens'];
-    if (screens is! List) {
-      screens = <dynamic>[];
-      detail['screens'] = screens;
-    } else if (screens is! List<dynamic>) {
-      screens = screens.toList();
-      detail['screens'] = screens;
-    }
-    return screens as List<dynamic>;
-  }
-
-  void _addScreen() {
-    setState(() {
-      final screens = _ensureScreensList();
-      if (screens == null) return;
-      screens.add(<String, dynamic>{
-        'name': '新規画面',
-        'purpose': 'この画面で何ができるかを書く',
-        'sections': <Map<String, dynamic>>[
-          {'label': 'アクション', 'body': 'ユーザーがここで取れる操作'},
-          {'label': '表示情報', 'body': 'この画面に表示するデータ'},
-        ],
-      });
-      _dirty = true;
-    });
-    _persistToUrl();
-  }
-
-  void _removeScreen(int index) {
-    setState(() {
-      final screens = _ensureScreensList();
-      if (screens == null || index < 0 || index >= screens.length) return;
-      screens.removeAt(index);
-      _dirty = true;
-    });
-    _persistToUrl();
-  }
-
-  List<dynamic>? _ensureSectionsList(int screenIndex) {
-    final screens = _ensureScreensList();
-    if (screens == null || screenIndex < 0 || screenIndex >= screens.length) {
-      return null;
-    }
-    final screen = screens[screenIndex];
-    if (screen is! Map<String, dynamic>) return null;
-    var sections = screen['sections'];
-    if (sections is! List) {
-      sections = <Map<String, dynamic>>[];
-      screen['sections'] = sections;
-    } else if (sections is! List<dynamic>) {
-      sections = sections.toList();
-      screen['sections'] = sections;
-    }
-    return sections as List<dynamic>;
-  }
-
-  void _addSection(int screenIndex) {
-    setState(() {
-      final sections = _ensureSectionsList(screenIndex);
-      if (sections == null) return;
-      sections.add(<String, dynamic>{
-        'label': 'ラベル',
-        'body': '本文',
-      });
-      _dirty = true;
-    });
-    _persistToUrl();
-  }
-
-  void _removeSection(int screenIndex, int sectionIndex) {
-    setState(() {
-      final sections = _ensureSectionsList(screenIndex);
-      if (sections == null ||
-          sectionIndex < 0 ||
-          sectionIndex >= sections.length) {
-        return;
-      }
-      sections.removeAt(sectionIndex);
-      _dirty = true;
-    });
-    _persistToUrl();
-  }
-
-  List<dynamic>? _ensureDetailList(String key) {
-    final payload = _payload;
-    if (payload == null) return null;
-    var detail = payload['detail'];
-    if (detail is! Map<String, dynamic>) {
-      detail = <String, dynamic>{};
-      payload['detail'] = detail;
-    }
-    var list = (detail as Map<String, dynamic>)[key];
-    if (list is! List) {
-      list = <dynamic>[];
-      detail[key] = list;
-    } else if (list is! List<dynamic>) {
-      list = list.toList();
-      detail[key] = list;
-    }
-    return list as List<dynamic>;
-  }
-
-  void _addApi() {
-    setState(() {
-      final apis = _ensureDetailList('apis');
-      if (apis == null) return;
-      apis.add(<String, dynamic>{
-        'name': 'GET /endpoint',
-        'description': 'この API が返すもの',
-      });
-      _dirty = true;
-    });
-    _persistToUrl();
-  }
-
-  void _removeApi(int index) {
-    setState(() {
-      final apis = _ensureDetailList('apis');
-      if (apis == null || index < 0 || index >= apis.length) return;
-      apis.removeAt(index);
-      _dirty = true;
-    });
-    _persistToUrl();
-  }
-
-  void _addStack() {
-    setState(() {
-      final stack = _ensureDetailList('stack');
-      if (stack == null) return;
-      stack.add('新規項目');
-      _dirty = true;
-    });
-    _persistToUrl();
-  }
-
-  void _removeStack(int index) {
-    setState(() {
-      final stack = _ensureDetailList('stack');
-      if (stack == null || index < 0 || index >= stack.length) return;
-      stack.removeAt(index);
-      _dirty = true;
-    });
-    _persistToUrl();
-  }
-
-  void _addRisk() {
-    setState(() {
-      final risks = _ensureDetailList('risks');
-      if (risks == null) return;
-      risks.add('新しいリスク / 論点');
-      _dirty = true;
-    });
-    _persistToUrl();
-  }
-
-  void _removeRisk(int index) {
-    setState(() {
-      final risks = _ensureDetailList('risks');
-      if (risks == null || index < 0 || index >= risks.length) return;
-      risks.removeAt(index);
-      _dirty = true;
-    });
-    _persistToUrl();
-  }
-
-  /// Initialize a blank payload template so the user can start from
-  /// scratch without a React-generated handoff. This is the "zero-to-one"
-  /// entry: one empty screen with two placeholder sections.
-  void _startBlank() {
-    setState(() {
-      _payload = <String, dynamic>{
-        'title': '新規プロジェクト',
-        'icon': '✨',
-        'summary': '1〜2 行の概要',
-        'prompt': '(手動作成)',
-        'meta': <Map<String, dynamic>>[],
-        'detail': <String, dynamic>{
-          'screens': <Map<String, dynamic>>[
-            {
-              'name': 'ホーム',
-              'purpose': 'この画面の目的',
-              'sections': <Map<String, dynamic>>[
-                {'label': 'アクション', 'body': 'ユーザーがここで取れる操作'},
-                {'label': '表示情報', 'body': 'この画面に表示するデータ'},
-              ],
-            },
-          ],
-          'userFlow': '',
-          'apis': <Map<String, dynamic>>[],
-          'stack': <String>[],
-          'risks': <String>[],
-        },
-      };
-      _dirty = true;
-    });
-    _persistToUrl();
-  }
-
-  /// Re-encode the current payload and write it back to the browser URL
-  /// (Web only). On desktop / mobile the call is a noop via the stub.
-  /// Best-effort — if encoding fails we just skip silently.
-  void _persistToUrl() {
-    final payload = _payload;
-    if (payload == null) return;
-    try {
-      final jsonStr = json.encode(payload);
-      final base64 = base64Url.encode(utf8.encode(jsonStr)).replaceAll('=', '');
-      updateQueryParameter('data', base64);
-    } catch (_) {
-      // swallow; never fail an edit because the URL could not update
-    }
+  void _onControllerChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    final payload = _payload;
+    final payload = _controller.payload;
     return Scaffold(
       backgroundColor: ImportPageStyles.backgroundColor,
       appBar: AppBar(
@@ -301,7 +59,7 @@ class _ImportPageState extends State<ImportPage> {
               'Imported from Prototype Engine',
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
             ),
-            if (_dirty) ...[
+            if (_controller.dirty) ...[
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -329,6 +87,16 @@ class _ImportPageState extends State<ImportPage> {
             ? null
             : [
                 IconButton(
+                  tooltip: 'Undo',
+                  icon: const Icon(Icons.undo),
+                  onPressed: _controller.canUndo ? _controller.undo : null,
+                ),
+                IconButton(
+                  tooltip: 'Redo',
+                  icon: const Icon(Icons.redo),
+                  onPressed: _controller.canRedo ? _controller.redo : null,
+                ),
+                IconButton(
                   tooltip: _showLivePreview
                       ? 'ライブプレビューを非表示'
                       : 'ライブプレビューを表示',
@@ -343,7 +111,7 @@ class _ImportPageState extends State<ImportPage> {
               ],
       ),
       body: payload == null
-          ? _EmptyState(onStartBlank: _startBlank)
+          ? _EmptyState(onStartBlank: _controller.startBlank)
           : Column(
               children: [
                 if (_showLivePreview)
@@ -351,17 +119,17 @@ class _ImportPageState extends State<ImportPage> {
                 Expanded(
                   child: _ImportBody(
                     payload: payload,
-                    onEdit: _editAtPath,
-                    onAddScreen: _addScreen,
-                    onRemoveScreen: _removeScreen,
-                    onAddSection: _addSection,
-                    onRemoveSection: _removeSection,
-                    onAddApi: _addApi,
-                    onRemoveApi: _removeApi,
-                    onAddStack: _addStack,
-                    onRemoveStack: _removeStack,
-                    onAddRisk: _addRisk,
-                    onRemoveRisk: _removeRisk,
+                    onEdit: _controller.editAtPath,
+                    onAddScreen: _controller.addScreen,
+                    onRemoveScreen: _controller.removeScreen,
+                    onAddSection: _controller.addSection,
+                    onRemoveSection: _controller.removeSection,
+                    onAddApi: _controller.addApi,
+                    onRemoveApi: _controller.removeApi,
+                    onAddStack: _controller.addStack,
+                    onRemoveStack: _controller.removeStack,
+                    onAddRisk: _controller.addRisk,
+                    onRemoveRisk: _controller.removeRisk,
                   ),
                 ),
               ],
