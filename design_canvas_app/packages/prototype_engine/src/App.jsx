@@ -3,7 +3,7 @@ import { AppShell, LandingHero, InformationGrid } from './components/prototypes'
 import { ProjectMeta } from './components/Badge'
 import { CommandBar } from './components/CommandBar'
 import { INITIAL_PROJECTS } from './data/projects'
-import { generatePrototype } from './lib/generate'
+import { generatePrototypeStream } from './lib/generate'
 
 const NAV_ITEMS = [
   { label: 'Projects', href: '#', active: true },
@@ -25,25 +25,34 @@ function cardClassFn(item) {
   return BASE_CARD
 }
 
+// 不完全な meta 要素を除外 (ストリーミング途中の partial 対応)
+function validMeta(meta) {
+  return Array.isArray(meta) ? meta.filter((m) => m && m.label && m.color) : []
+}
+
 // projects → InformationGrid の items 形式に変換
 function toGridItems(projects) {
-  return projects.map((p) => ({
-    id: p.id,
-    icon: <span className="text-2xl">{p.icon}</span>,
-    title: p.title,
-    generating: p.generating ?? false,
-    error: p.error ?? false,
-    description: p.generating ? (
-      <span className="block text-slate-400 text-sm">Claude が生成しています...</span>
-    ) : p.error ? (
-      <span className="block text-red-600 text-sm leading-relaxed">{p.summary}</span>
-    ) : (
-      <>
-        <span className="block text-slate-500 leading-relaxed">{p.summary}</span>
-        <ProjectMeta roles={p.meta} />
-      </>
-    ),
-  }))
+  return projects.map((p) => {
+    const safeMeta = validMeta(p.meta)
+    const hasContent = Boolean(p.summary)
+    return {
+      id: p.id,
+      icon: <span className="text-2xl">{p.icon}</span>,
+      title: p.title,
+      generating: p.generating ?? false,
+      error: p.error ?? false,
+      description: p.error ? (
+        <span className="block text-red-600 text-sm leading-relaxed">{p.summary}</span>
+      ) : hasContent ? (
+        <>
+          <span className="block text-slate-500 leading-relaxed">{p.summary}</span>
+          {safeMeta.length > 0 && <ProjectMeta roles={safeMeta} />}
+        </>
+      ) : (
+        <span className="block text-slate-400 text-sm">Claude が生成しています...</span>
+      ),
+    }
+  })
 }
 
 export default function App() {
@@ -52,28 +61,32 @@ export default function App() {
   async function handleGenerate(prompt) {
     const id = `gen-${Date.now()}`
 
-    // 1. 仮カードを先頭に追加
+    // 1. 仮カードを先頭に追加 (アイコンとタイトルはストリームで上書きされる)
     setProjects((prev) => [
       { id, icon: '⏳', title: prompt, summary: '', meta: [], generating: true },
       ...prev,
     ])
 
-    // 2. Claude に生成を依頼して結果で差し替え
+    // 2. ストリームから partial を受け取るたびに上書きする
     try {
-      const result = await generatePrototype(prompt)
-      setProjects((prev) =>
-        prev.map((p) =>
-          p.id === id
-            ? {
-                id,
-                icon: result.icon,
-                title: result.title,
-                summary: result.summary,
-                meta: result.meta,
-                generating: false,
-              }
-            : p
+      for await (const partial of generatePrototypeStream(prompt)) {
+        setProjects((prev) =>
+          prev.map((p) =>
+            p.id === id
+              ? {
+                  ...p,
+                  icon: partial.icon || p.icon,
+                  title: partial.title || p.title,
+                  summary: partial.summary || p.summary,
+                  meta: validMeta(partial.meta).length > 0 ? partial.meta : p.meta,
+                }
+              : p
+          )
         )
+      }
+      // 3. ストリーム完了 → ghost を解除
+      setProjects((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, generating: false } : p))
       )
     } catch (error) {
       setProjects((prev) =>

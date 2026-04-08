@@ -1,8 +1,10 @@
-// Vercel Function: プロンプトから Claude Haiku でプロジェクトカードを生成する
+// Vercel Function: プロンプトから Claude Haiku でプロジェクトカードをストリーミング生成する
 // Vercel 上では AI Gateway の OIDC トークンが自動注入されるため認証設定は不要。
 // ローカル開発時は `vercel env pull` で .env.local に VERCEL_OIDC_TOKEN を取得する
-// (12 時間で期限切れになるので必要に応じて再取得)。
-import { generateText, Output, gateway } from 'ai'
+// (12 時間有効)。
+//
+// レスポンスは NDJSON (改行区切り JSON) で、partial object を逐次送信する。
+import { streamText, Output, gateway } from 'ai'
 import { z } from 'zod'
 
 const cardSchema = z.object({
@@ -46,18 +48,30 @@ export default async function handler(req, res) {
     return
   }
 
+  res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8')
+  res.setHeader('Cache-Control', 'no-cache, no-transform')
+  res.setHeader('X-Accel-Buffering', 'no')
+
   try {
-    const { output } = await generateText({
+    const { partialOutputStream } = streamText({
       model: gateway('anthropic/claude-haiku-4.5'),
       system: SYSTEM,
       prompt: prompt.trim(),
       output: Output.object({ schema: cardSchema }),
     })
 
-    res.status(200).json(output)
+    for await (const partial of partialOutputStream) {
+      res.write(JSON.stringify(partial) + '\n')
+    }
+    res.end()
   } catch (error) {
     console.error('[api/generate] failure', error)
     const message = error instanceof Error ? error.message : 'Generation failed'
-    res.status(500).json({ error: message })
+    if (!res.headersSent) {
+      res.status(500).json({ error: message })
+    } else {
+      res.write(JSON.stringify({ error: message }) + '\n')
+      res.end()
+    }
   }
 }
