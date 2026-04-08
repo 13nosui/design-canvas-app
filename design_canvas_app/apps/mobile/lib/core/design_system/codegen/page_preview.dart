@@ -40,6 +40,7 @@ class GeneratedPagePreview extends StatelessWidget {
     final purpose = ((screen['purpose'] as String?) ?? '').trim();
     final displayName = name.isEmpty ? '(名称未定)' : name;
     final headerText = projectTitle.isEmpty ? displayName : projectTitle;
+    final screenSections = _readScreenSections(screen);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -90,6 +91,12 @@ class GeneratedPagePreview extends StatelessWidget {
                 color: AppTokens.colorTextSecondary,
               ),
             ),
+            if (screenSections.isNotEmpty) ...[
+              const SizedBox(height: _sectionGap),
+              const _SectionLabel('この画面について'),
+              const SizedBox(height: 12),
+              ..._buildSectionCards(screenSections),
+            ],
             if (meta.isNotEmpty) ...[
               const SizedBox(height: _sectionGap),
               _MetaRow(meta: meta),
@@ -113,6 +120,61 @@ class GeneratedPagePreview extends StatelessWidget {
   }
 
   static const double _sectionGap = 24;
+
+  static List<Map<String, dynamic>> _readScreenSections(
+      Map<String, dynamic> screen) {
+    final raw = screen['sections'];
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map((e) => e.cast<String, dynamic>())
+        .toList(growable: false);
+  }
+
+  List<Widget> _buildSectionCards(List<Map<String, dynamic>> sections) {
+    return sections.map((s) {
+      final label = (s['label'] as String?) ?? '';
+      final body = (s['body'] as String?) ?? '';
+      return Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x0A000000),
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              body,
+              style: const TextStyle(
+                fontSize: AppTokens.fontBodyM,
+                height: 1.6,
+                color: AppTokens.colorTextSecondary,
+              ),
+            ),
+          ],
+        ),
+      );
+    }).toList();
+  }
 
   List<Widget> _buildApiCards(List<Map<String, dynamic>> apis) {
     return apis.map((a) {

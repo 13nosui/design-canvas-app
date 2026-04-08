@@ -154,6 +154,63 @@ void main() {
       expect(page.dart.content, isNot(contains('Wrap(')));
     });
 
+    test('emits per-screen sections cards from screen.sections', () {
+      final page = generatePageFromScreen(
+        projectSlug: 'my_app',
+        screen: {
+          'name': 'Dashboard',
+          'purpose': 'Overview',
+          'sections': [
+            {'label': 'アクション', 'body': 'タスクを追加できる'},
+            {'label': '表示情報', 'body': '今日のタスク一覧'},
+          ],
+        },
+      );
+
+      expect(page.dart.content, contains("'この画面について'"));
+      expect(page.dart.content, contains("'アクション'"));
+      expect(page.dart.content, contains("'タスクを追加できる'"));
+      expect(page.dart.content, contains("'表示情報'"));
+      expect(page.dart.content, contains("'今日のタスク一覧'"));
+      expect(page.dart.content, contains('DashboardPageStyles.sectionCardDecoration'));
+      expect(page.dart.content, contains('DashboardPageStyles.sectionCardLabelStyle'));
+    });
+
+    test('escapes single quotes in screen sections', () {
+      final page = generatePageFromScreen(
+        projectSlug: 'my_app',
+        screen: {
+          'name': 'Home',
+          'purpose': 'x',
+          'sections': [
+            {'label': "Alice's note", 'body': "Bob's data shows up"},
+          ],
+        },
+      );
+
+      expect(page.dart.content, contains(r"'Alice\'s note'"));
+      expect(page.dart.content, contains(r"'Bob\'s data shows up'"));
+    });
+
+    test('screen without sections omits the section header', () {
+      final page = generatePageFromScreen(
+        projectSlug: 'my_app',
+        screen: {'name': 'Home', 'purpose': 'x'},
+      );
+
+      expect(page.dart.content, isNot(contains("'この画面について'")));
+    });
+
+    test('styles file includes sectionCard tokens', () {
+      final page = generatePageFromScreen(
+        projectSlug: 'my_app',
+        screen: {'name': 'Home', 'purpose': 'x'},
+      );
+
+      expect(page.styles.content, contains('sectionCardDecoration'));
+      expect(page.styles.content, contains('sectionCardLabelStyle'));
+    });
+
     test('emits meta badges Wrap with status colors', () {
       final page = generatePageFromScreen(
         projectSlug: 'my_app',

@@ -66,6 +66,7 @@ GeneratedPage generatePageFromScreen({
 }) {
   final rawName = (screen['name'] as String?)?.trim() ?? '';
   final purpose = (screen['purpose'] as String?)?.trim() ?? '';
+  final screenSections = _asListOfMaps(screen['sections']);
 
   final name = rawName.isEmpty ? 'Screen $fallbackIndex' : rawName;
   final slug = _slugify(name, fallback: 'screen_$fallbackIndex');
@@ -82,6 +83,7 @@ GeneratedPage generatePageFromScreen({
     purpose: purpose,
     projectTitle: projectTitle,
     icon: icon,
+    screenSections: screenSections,
     meta: meta,
     apis: apis,
     stack: stack,
@@ -210,6 +212,7 @@ String _buildDartContent({
   required String purpose,
   required String projectTitle,
   required String icon,
+  required List<Map<String, dynamic>> screenSections,
   required List<Map<String, dynamic>> meta,
   required List<Map<String, dynamic>> apis,
   required List<String> stack,
@@ -231,11 +234,13 @@ String _buildDartContent({
           ],
         )''';
 
+  final screenSectionsBlock = _buildScreenSectionsBlock(className, screenSections);
   final metaBlock = _buildMetaBlock(className, meta);
   final apisBlock = _buildApisBlock(className, apis);
   final stackBlock = _buildStackBlock(className, stack);
 
   final sections = <String>[
+    if (screenSectionsBlock.isNotEmpty) screenSectionsBlock,
     if (metaBlock.isNotEmpty) metaBlock,
     if (apisBlock.isNotEmpty) apisBlock,
     if (stackBlock.isNotEmpty) stackBlock,
@@ -289,6 +294,32 @@ $sectionsJoined
   }
 }
 ''';
+}
+
+String _buildScreenSectionsBlock(
+    String className, List<Map<String, dynamic>> sections) {
+  if (sections.isEmpty) return '';
+  final cards = sections.map((s) {
+    final label = _escapeSingleQuotes((s['label'] as String?) ?? '');
+    final body = _escapeSingleQuotes((s['body'] as String?) ?? '');
+    return '''            Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(14),
+              decoration: ${className}PageStyles.sectionCardDecoration,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('$label', style: ${className}PageStyles.sectionCardLabelStyle),
+                  const SizedBox(height: 6),
+                  Text('$body', style: ${className}PageStyles.bodyStyle),
+                ],
+              ),
+            ),''';
+  }).join('\n');
+
+  return '''            Text('この画面について', style: ${className}PageStyles.sectionLabelStyle),
+            const SizedBox(height: 12),
+$cards''';
 }
 
 String _buildMetaBlock(String className, List<Map<String, dynamic>> meta) {
@@ -435,6 +466,27 @@ class ${className}PageStyles {
   static const statusFgYellow = Color(0xFF92400E);
   static const statusBgSlate = Color(0xFFF1F5F9);
   static const statusFgSlate = Color(0xFF475569);
+
+  // Screen-specific section cards.
+  static final sectionCardDecoration = BoxDecoration(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(12),
+    border: Border.all(
+      color: const Color(0xFFE2E8F0),
+    ),
+    boxShadow: const [
+      BoxShadow(
+        color: Color(0x0A000000),
+        blurRadius: 8,
+        offset: Offset(0, 2),
+      ),
+    ],
+  );
+  static const sectionCardLabelStyle = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w700,
+    color: Color(0xFF0F172A), // TODO: New Token Candidate - colorTextStrong
+  );
 
   // API card.
   static final cardDecoration = BoxDecoration(
