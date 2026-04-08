@@ -216,6 +216,26 @@ class _ImportPageState extends State<ImportPage> {
     _persistToUrl();
   }
 
+  void _addRisk() {
+    setState(() {
+      final risks = _ensureDetailList('risks');
+      if (risks == null) return;
+      risks.add('新しいリスク / 論点');
+      _dirty = true;
+    });
+    _persistToUrl();
+  }
+
+  void _removeRisk(int index) {
+    setState(() {
+      final risks = _ensureDetailList('risks');
+      if (risks == null || index < 0 || index >= risks.length) return;
+      risks.removeAt(index);
+      _dirty = true;
+    });
+    _persistToUrl();
+  }
+
   /// Initialize a blank payload template so the user can start from
   /// scratch without a React-generated handoff. This is the "zero-to-one"
   /// entry: one empty screen with two placeholder sections.
@@ -317,6 +337,8 @@ class _ImportPageState extends State<ImportPage> {
               onRemoveApi: _removeApi,
               onAddStack: _addStack,
               onRemoveStack: _removeStack,
+              onAddRisk: _addRisk,
+              onRemoveRisk: _removeRisk,
             ),
       floatingActionButton: payload == null
           ? null
@@ -406,6 +428,8 @@ class _ImportBody extends StatelessWidget {
     required this.onRemoveApi,
     required this.onAddStack,
     required this.onRemoveStack,
+    required this.onAddRisk,
+    required this.onRemoveRisk,
   });
   final Map<String, dynamic> payload;
   final EditAtPath onEdit;
@@ -417,6 +441,8 @@ class _ImportBody extends StatelessWidget {
   final ValueChanged<int> onRemoveApi;
   final VoidCallback onAddStack;
   final ValueChanged<int> onRemoveStack;
+  final VoidCallback onAddRisk;
+  final ValueChanged<int> onRemoveRisk;
 
   @override
   Widget build(BuildContext context) {
@@ -480,9 +506,11 @@ class _ImportBody extends StatelessWidget {
         onRemoveSection: onRemoveSection,
       ),
     ));
-    if (userFlow != null && userFlow.isNotEmpty) {
-      widgets.add(_Section(label: 'ユーザーフロー', child: _UserFlowText(text: userFlow)));
-    }
+    // userFlow は空でも常に表示 (編集で記入できる)
+    widgets.add(_Section(
+      label: 'ユーザーフロー',
+      child: _UserFlowText(text: userFlow ?? '', onEdit: onEdit),
+    ));
     // APIs: always-visible so add button is reachable even when list is empty.
     widgets.add(_Section(
       label: 'API / エンドポイント',
@@ -503,9 +531,16 @@ class _ImportBody extends StatelessWidget {
         onRemove: onRemoveStack,
       ),
     ));
-    if (risks.isNotEmpty) {
-      widgets.add(_Section(label: 'リスクと論点', child: _RisksList(risks: risks)));
-    }
+    // risks は空でも常に表示
+    widgets.add(_Section(
+      label: 'リスクと論点',
+      child: _RisksList(
+        risks: risks,
+        onEdit: onEdit,
+        onAdd: onAddRisk,
+        onRemove: onRemoveRisk,
+      ),
+    ));
     return widgets;
   }
 }
@@ -616,22 +651,37 @@ class _Section extends StatelessWidget {
 }
 
 class _UserFlowText extends StatelessWidget {
-  const _UserFlowText({required this.text});
+  const _UserFlowText({required this.text, required this.onEdit});
   final String text;
+  final EditAtPath onEdit;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: ImportPageStyles.cardPadding,
       decoration: ImportPageStyles.cardDecoration,
-      child: Text(text, style: ImportPageStyles.itemBodyStyle),
+      child: EditableField(
+        value: text,
+        style: ImportPageStyles.itemBodyStyle,
+        label: 'ユーザーフロー',
+        multiline: true,
+        onChanged: (v) => onEdit(['detail', 'userFlow'], v),
+      ),
     );
   }
 }
 
 class _RisksList extends StatelessWidget {
-  const _RisksList({required this.risks});
+  const _RisksList({
+    required this.risks,
+    required this.onEdit,
+    required this.onAdd,
+    required this.onRemove,
+  });
   final List<String> risks;
+  final EditAtPath onEdit;
+  final VoidCallback onAdd;
+  final ValueChanged<int> onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -640,20 +690,56 @@ class _RisksList extends StatelessWidget {
       decoration: ImportPageStyles.cardDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: risks.map((r) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(Icons.warning_amber_rounded,
-                    size: 16, color: ImportPageStyles.riskIconColor),
-                const SizedBox(width: 8),
-                Expanded(child: Text(r, style: ImportPageStyles.itemBodyStyle)),
-              ],
+        children: [
+          ...risks.asMap().entries.map((entry) {
+            final i = entry.key;
+            final r = entry.value;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.warning_amber_rounded,
+                      size: 16, color: ImportPageStyles.riskIconColor),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: EditableField(
+                      value: r,
+                      style: ImportPageStyles.itemBodyStyle,
+                      label: 'リスク',
+                      multiline: true,
+                      onChanged: (v) => onEdit(['detail', 'risks', i], v),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () => onRemove(i),
+                    borderRadius: BorderRadius.circular(4),
+                    child: const Padding(
+                      padding: EdgeInsets.all(4),
+                      child: Icon(Icons.close,
+                          size: 14, color: Color(0xFF94A3B8)),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              icon: const Icon(Icons.add, size: 14),
+              label: const Text('リスクを追加'),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF2563EB),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                minimumSize: const Size(0, 32),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              onPressed: onAdd,
             ),
-          );
-        }).toList(),
+          ),
+        ],
       ),
     );
   }
