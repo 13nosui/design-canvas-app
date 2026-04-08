@@ -7,6 +7,8 @@
 //   - EditableField         text that opens an edit dialog on tap
 //   - ScreensList          the screens editor with add/remove for both
 //                          screens and their sections
+//   - ApisList             editable detail.apis list with add/remove
+//   - StackChips           editable detail.stack chips with add/remove
 //
 // Everything else is private to this file.
 
@@ -387,6 +389,188 @@ class _SectionSubCard extends StatelessWidget {
             onChanged: onEditBody,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class ApisList extends StatelessWidget {
+  const ApisList({
+    super.key,
+    required this.apis,
+    required this.onEdit,
+    required this.onAdd,
+    required this.onRemove,
+  });
+  final List<Map<String, dynamic>> apis;
+  final EditAtPath onEdit;
+  final VoidCallback onAdd;
+  final ValueChanged<int> onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ...apis.asMap().entries.map((entry) {
+          final i = entry.key;
+          final a = entry.value;
+          final name = (a['name'] as String?) ?? '';
+          final description = (a['description'] as String?) ?? '';
+          return Container(
+            margin: const EdgeInsets.only(bottom: ImportPageStyles.itemGap),
+            padding: ImportPageStyles.cardPadding,
+            decoration: ImportPageStyles.cardDecoration,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: ImportPageStyles.apiCodeBackground,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: EditableField(
+                          value: name,
+                          style: ImportPageStyles.apiCodeStyle,
+                          label: 'API 名',
+                          onChanged: (v) =>
+                              onEdit(['detail', 'apis', i, 'name'], v),
+                        ),
+                      ),
+                    ),
+                    _DeleteMini(onPressed: () => onRemove(i)),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                EditableField(
+                  value: description,
+                  style: ImportPageStyles.itemBodyStyle,
+                  label: 'API の説明',
+                  multiline: true,
+                  onChanged: (v) =>
+                      onEdit(['detail', 'apis', i, 'description'], v),
+                ),
+              ],
+            ),
+          );
+        }),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            icon: const Icon(Icons.add, size: 14),
+            label: const Text('API を追加'),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF2563EB),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: const Size(0, 32),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            onPressed: onAdd,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class StackChips extends StatelessWidget {
+  const StackChips({
+    super.key,
+    required this.stack,
+    required this.onEdit,
+    required this.onAdd,
+    required this.onRemove,
+  });
+  final List<String> stack;
+  final EditAtPath onEdit;
+  final VoidCallback onAdd;
+  final ValueChanged<int> onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        ...stack.asMap().entries.map((entry) {
+          final i = entry.key;
+          final s = entry.value;
+          return Container(
+            padding: const EdgeInsets.fromLTRB(10, 6, 4, 6),
+            decoration: BoxDecoration(
+              color: ImportPageStyles.chipBackground,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                EditableField(
+                  value: s,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: ImportPageStyles.chipForeground,
+                  ),
+                  label: 'スタック項目',
+                  onChanged: (v) => onEdit(['detail', 'stack', i], v),
+                ),
+                _DeleteMini(onPressed: () => onRemove(i)),
+              ],
+            ),
+          );
+        }),
+        InkWell(
+          onTap: onAdd,
+          borderRadius: BorderRadius.circular(6),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: const Color(0xFFCBD5E1),
+              ),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.add, size: 12, color: Color(0xFF64748B)),
+                SizedBox(width: 4),
+                Text(
+                  '追加',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DeleteMini extends StatelessWidget {
+  const _DeleteMini({required this.onPressed});
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(4),
+      child: const Padding(
+        padding: EdgeInsets.all(3),
+        child: Icon(Icons.close, size: 12, color: Color(0xFF94A3B8)),
       ),
     );
   }
