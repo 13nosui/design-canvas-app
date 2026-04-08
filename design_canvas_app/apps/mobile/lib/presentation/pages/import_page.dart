@@ -6,6 +6,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/design_system/codegen/page_codegen.dart';
+import '../../core/utils/page_file_exporter_stub.dart'
+    if (dart.library.io) '../../core/utils/page_file_exporter_io.dart';
 import 'import_page.styles.dart';
 
 class ImportPage extends StatelessWidget {
@@ -93,6 +95,33 @@ class _GeneratedPagesSheet extends StatelessWidget {
     return buffer.toString();
   }
 
+  Future<void> _writeToDisk(BuildContext ctx) async {
+    try {
+      final result = await savePagesToDisk(pages);
+      if (!ctx.mounted) return;
+      ScaffoldMessenger.of(ctx).showSnackBar(
+        SnackBar(
+          content: Text(
+            '✅ ${result.writtenPaths.length} 個のファイルを書き出しました。'
+            'scanned_routes を再生成してください: '
+            'dart scripts/generate_sitemap_widgets.dart',
+          ),
+          duration: const Duration(seconds: 6),
+        ),
+      );
+    } on UnsupportedError catch (e) {
+      if (!ctx.mounted) return;
+      ScaffoldMessenger.of(ctx).showSnackBar(
+        SnackBar(content: Text('⚠️ ${e.message}')),
+      );
+    } catch (e) {
+      if (!ctx.mounted) return;
+      ScaffoldMessenger.of(ctx).showSnackBar(
+        SnackBar(content: Text('❌ 書き出しに失敗: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
@@ -113,6 +142,12 @@ class _GeneratedPagesSheet extends StatelessWidget {
                       style: ImportPageStyles.itemTitleStyle,
                     ),
                   ),
+                  if (!kIsWeb)
+                    TextButton.icon(
+                      icon: const Icon(Icons.save_alt, size: 16),
+                      label: const Text('ファイルに書き出す'),
+                      onPressed: () => _writeToDisk(ctx),
+                    ),
                   TextButton.icon(
                     icon: const Icon(Icons.copy_all, size: 16),
                     label: const Text('全てコピー'),
