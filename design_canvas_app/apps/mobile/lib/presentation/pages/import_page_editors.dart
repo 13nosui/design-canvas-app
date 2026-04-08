@@ -4,7 +4,7 @@
 //
 // Public surface consumed by `import_page.dart`:
 //   - EditAtPath           typedef
-//   - EditableText         text that opens an edit dialog on tap
+//   - EditableField         text that opens an edit dialog on tap
 //   - ScreensList          the screens editor with add/remove for both
 //                          screens and their sections
 //
@@ -23,8 +23,8 @@ typedef EditAtPath = void Function(List<Object> path, String newValue);
 /// with the new value. Designed to drop-in replace any Text in the
 /// ImportPage body — pencil icon is inlined via WidgetSpan so it does not
 /// break surrounding layouts.
-class EditableText extends StatelessWidget {
-  const EditableText({
+class EditableField extends StatelessWidget {
+  const EditableField({
     super.key,
     required this.value,
     required this.style,
@@ -183,7 +183,7 @@ class ScreensList extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      child: EditableText(
+                      child: EditableField(
                         value: name,
                         style: ImportPageStyles.itemTitleStyle,
                         label: '画面名',
@@ -204,7 +204,7 @@ class ScreensList extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 4),
-                EditableText(
+                EditableField(
                   value: purpose,
                   style: ImportPageStyles.itemBodyStyle,
                   label: '画面の目的',
@@ -360,7 +360,7 @@ class _SectionSubCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: EditableText(
+                child: EditableField(
                   value: label,
                   style: const TextStyle(
                     fontSize: 11,
@@ -379,7 +379,7 @@ class _SectionSubCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 4),
-          EditableText(
+          EditableField(
             value: body,
             style: ImportPageStyles.itemBodyStyle,
             label: 'セクション本文',

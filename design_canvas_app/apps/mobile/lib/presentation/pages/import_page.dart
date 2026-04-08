@@ -399,14 +399,14 @@ class _Hero extends StatelessWidget {
       children: [
         Text(icon, style: const TextStyle(fontSize: ImportPageStyles.heroIconSize)),
         const SizedBox(height: ImportPageStyles.heroSpacing),
-        EditableText(
+        EditableField(
           value: title,
           style: ImportPageStyles.titleStyle,
           label: 'タイトル',
           onChanged: (v) => onEdit(['title'], v),
         ),
         const SizedBox(height: 12),
-        EditableText(
+        EditableField(
           value: summary,
           style: ImportPageStyles.summaryStyle,
           label: '概要',
