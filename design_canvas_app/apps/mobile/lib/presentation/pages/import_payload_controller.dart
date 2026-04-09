@@ -355,6 +355,32 @@ class ImportPayloadController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Return the current payload as a pretty-printed JSON string, or empty
+  /// if there is no payload.
+  String exportAsJson() {
+    final p = _payload;
+    if (p == null) return '';
+    return const JsonEncoder.withIndent('  ').convert(p);
+  }
+
+  /// Replace the current payload by parsing [jsonString]. Returns true on
+  /// success, false if the input is malformed or not a JSON object.
+  /// Pushes the previous state to the undo stack so import is reversible.
+  bool importFromJson(String jsonString) {
+    try {
+      final decoded = json.decode(jsonString);
+      if (decoded is! Map) return false;
+      _pushHistory();
+      _payload = Map<String, dynamic>.from(decoded as Map);
+      _dirty = true;
+      _persistToUrl();
+      notifyListeners();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Re-encode payload to base64url and update the browser URL (web only).
   /// Best-effort — never throws.
   void _persistToUrl() {

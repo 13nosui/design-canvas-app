@@ -4,6 +4,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'import_page.styles.dart';
 import 'import_page_editors.dart';
 import 'import_page_live_preview.dart';
@@ -42,6 +43,36 @@ class _ImportPageState extends State<ImportPage> {
 
   void _onControllerChanged() {
     if (mounted) setState(() {});
+  }
+
+  Future<void> _exportJson() async {
+    final jsonStr = _controller.exportAsJson();
+    if (jsonStr.isEmpty) return;
+    await Clipboard.setData(ClipboardData(text: jsonStr));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('payload JSON をクリップボードにコピーしました'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Future<void> _importJson() async {
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => const _ImportJsonDialog(),
+    );
+    if (result == null || result.isEmpty) return;
+    final ok = _controller.importFromJson(result);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(ok
+            ? 'JSON を読み込みました (Undo で元に戻せます)'
+            : '❌ JSON の形式が不正です'),
+      ),
+    );
   }
 
   @override
@@ -108,6 +139,35 @@ class _ImportPageState extends State<ImportPage> {
                   onPressed: () => setState(
                       () => _showLivePreview = !_showLivePreview),
                 ),
+                PopupMenuButton<String>(
+                  tooltip: 'その他',
+                  icon: const Icon(Icons.more_vert),
+                  onSelected: (value) async {
+                    if (value == 'export') {
+                      await _exportJson();
+                    } else if (value == 'import') {
+                      await _importJson();
+                    }
+                  },
+                  itemBuilder: (ctx) => const [
+                    PopupMenuItem(
+                      value: 'export',
+                      child: ListTile(
+                        leading: Icon(Icons.download, size: 18),
+                        title: Text('JSON をコピー'),
+                        dense: true,
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'import',
+                      child: ListTile(
+                        leading: Icon(Icons.upload, size: 18),
+                        title: Text('JSON から読み込み'),
+                        dense: true,
+                      ),
+                    ),
+                  ],
+                ),
               ],
       ),
       body: payload == null
@@ -166,6 +226,54 @@ Map<String, dynamic>? _decodePayload(String? encoded) {
     return null;
   }
   return null;
+}
+
+class _ImportJsonDialog extends StatefulWidget {
+  const _ImportJsonDialog();
+
+  @override
+  State<_ImportJsonDialog> createState() => _ImportJsonDialogState();
+}
+
+class _ImportJsonDialogState extends State<_ImportJsonDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('JSON から読み込み'),
+      content: SizedBox(
+        width: 480,
+        child: TextField(
+          controller: _controller,
+          autofocus: true,
+          maxLines: 14,
+          minLines: 8,
+          style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            hintText: '{ "title": "...", "detail": { ... } }',
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('キャンセル'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_controller.text),
+          child: const Text('読み込む'),
+        ),
+      ],
+    );
+  }
 }
 
 class _EmptyState extends StatelessWidget {
