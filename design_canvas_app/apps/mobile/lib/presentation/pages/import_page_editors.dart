@@ -146,6 +146,7 @@ class ScreensList extends StatelessWidget {
     required this.onAddScreen,
     required this.onRemoveScreen,
     required this.onDuplicateScreen,
+    required this.onMoveScreen,
     required this.onAddSection,
     required this.onRemoveSection,
   });
@@ -154,6 +155,7 @@ class ScreensList extends StatelessWidget {
   final VoidCallback onAddScreen;
   final ValueChanged<int> onRemoveScreen;
   final ValueChanged<int> onDuplicateScreen;
+  final void Function(int from, int to) onMoveScreen;
   final ValueChanged<int> onAddSection;
   final void Function(int screenIndex, int sectionIndex) onRemoveSection;
 
@@ -194,6 +196,44 @@ class ScreensList extends StatelessWidget {
                         onChanged: (v) => onEdit(
                           ['detail', 'screens', screenIndex, 'name'],
                           v,
+                        ),
+                      ),
+                    ),
+                    Tooltip(
+                      message: '上へ移動',
+                      child: InkWell(
+                        onTap: screenIndex == 0
+                            ? null
+                            : () => onMoveScreen(screenIndex, screenIndex - 1),
+                        borderRadius: BorderRadius.circular(4),
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: Icon(
+                            Icons.arrow_upward,
+                            size: 14,
+                            color: screenIndex == 0
+                                ? const Color(0xFFCBD5E1)
+                                : const Color(0xFF94A3B8),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Tooltip(
+                      message: '下へ移動',
+                      child: InkWell(
+                        onTap: screenIndex == screens.length - 1
+                            ? null
+                            : () => onMoveScreen(screenIndex, screenIndex + 1),
+                        borderRadius: BorderRadius.circular(4),
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: Icon(
+                            Icons.arrow_downward,
+                            size: 14,
+                            color: screenIndex == screens.length - 1
+                                ? const Color(0xFFCBD5E1)
+                                : const Color(0xFF94A3B8),
+                          ),
                         ),
                       ),
                     ),

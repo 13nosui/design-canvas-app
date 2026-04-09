@@ -281,6 +281,41 @@ void main() {
       final screens = c.payload!['detail']['screens'] as List;
       expect((screens[1] as Map)['name'], '無題 (copy)');
     });
+
+    test('moveScreen reorders entries', () {
+      final c = ImportPayloadController(_samplePayload());
+      c.addScreen();
+      c.addScreen();
+      // screens: [Dashboard, 新規画面, 新規画面 (2)]
+      final before = (c.payload!['detail']['screens'] as List)
+          .map((s) => (s as Map)['name'])
+          .toList();
+      c.moveScreen(0, 2);
+      final after = (c.payload!['detail']['screens'] as List)
+          .map((s) => (s as Map)['name'])
+          .toList();
+      expect(after, [before[1], before[2], before[0]]);
+    });
+
+    test('moveScreen noop on invalid or equal indices', () {
+      final c = ImportPayloadController(_samplePayload());
+      c.addScreen();
+      final before = (c.payload!['detail']['screens'] as List).length;
+      c.moveScreen(0, 0);
+      c.moveScreen(-1, 0);
+      c.moveScreen(0, 99);
+      expect((c.payload!['detail']['screens'] as List).length, before);
+    });
+
+    test('moveScreen push history (undo restores)', () {
+      final c = ImportPayloadController(_samplePayload());
+      c.addScreen();
+      c.moveScreen(0, 1);
+      c.undo();
+      final first =
+          ((c.payload!['detail']['screens'] as List)[0] as Map)['name'];
+      expect(first, 'ダッシュボード');
+    });
   });
 
   group('meta badges', () {

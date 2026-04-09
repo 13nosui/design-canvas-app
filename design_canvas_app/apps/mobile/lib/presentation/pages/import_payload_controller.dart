@@ -215,6 +215,22 @@ class ImportPayloadController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Move the screen at [from] to position [to]. Indices are clamped.
+  /// Noop if from == to or either index is out of bounds.
+  void moveScreen(int from, int to) {
+    final screens = _ensureScreensList();
+    if (screens == null) return;
+    if (from < 0 || from >= screens.length) return;
+    if (to < 0 || to >= screens.length) return;
+    if (from == to) return;
+    _pushHistory();
+    final item = screens.removeAt(from);
+    screens.insert(to, item);
+    _dirty = true;
+    _persistToUrl();
+    notifyListeners();
+  }
+
   /// Clone the screen at [index] and insert the copy right after it.
   /// Useful for creating a variant of an existing screen.
   void duplicateScreen(int index) {
