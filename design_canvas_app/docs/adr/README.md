@@ -37,6 +37,7 @@ VISION.md の原則 2 「Traceable Decisions」の実装である。
 | [0004](./0004-handoff-base64url.md) | React → Flutter ハンドオフに base64url URL パラメータ | Accepted |
 | [0005](./0005-component-file-separation.md) | Flutter コンポーネントの `.dart` + `.styles.dart` 分離 | Accepted |
 | [0006](./0006-payload-as-truth.md) | Handoff payload を "編集の真実" とし、生成コードを derive する | Accepted |
+| [0007](./0007-controller-pattern.md) | ImportPage の state を `ChangeNotifier` controller で分離 | Accepted |
 
 ## 新しい ADR を書くタイミング
 
