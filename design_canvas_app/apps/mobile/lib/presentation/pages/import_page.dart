@@ -186,6 +186,7 @@ class _ImportPageState extends State<ImportPage> {
                     onMoveScreen: _controller.moveScreen,
                     onAddSection: _controller.addSection,
                     onRemoveSection: _controller.removeSection,
+                    onMoveSection: _controller.moveSection,
                     onAddApi: _controller.addApi,
                     onRemoveApi: _controller.removeApi,
                     onAddStack: _controller.addStack,
@@ -333,6 +334,7 @@ class _ImportBody extends StatelessWidget {
     required this.onMoveScreen,
     required this.onAddSection,
     required this.onRemoveSection,
+    required this.onMoveSection,
     required this.onAddApi,
     required this.onRemoveApi,
     required this.onAddStack,
@@ -351,6 +353,7 @@ class _ImportBody extends StatelessWidget {
   final void Function(int from, int to) onMoveScreen;
   final ValueChanged<int> onAddSection;
   final void Function(int screenIndex, int sectionIndex) onRemoveSection;
+  final void Function(int screenIndex, int from, int to) onMoveSection;
   final VoidCallback onAddApi;
   final ValueChanged<int> onRemoveApi;
   final VoidCallback onAddStack;
@@ -427,6 +430,7 @@ class _ImportBody extends StatelessWidget {
         onMoveScreen: onMoveScreen,
         onAddSection: onAddSection,
         onRemoveSection: onRemoveSection,
+        onMoveSection: onMoveSection,
       ),
     ));
     // userFlow は空でも常に表示 (編集で記入できる)

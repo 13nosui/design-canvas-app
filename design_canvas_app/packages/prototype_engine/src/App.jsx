@@ -193,6 +193,15 @@ export default function App() {
     handleElaborate(project)
   }
 
+  function handleClearAll() {
+    // eslint-disable-next-line no-alert
+    if (!window.confirm('生成したプロジェクトを全てクリアし、サンプルに戻します。よろしいですか?')) {
+      return
+    }
+    setProjects(INITIAL_PROJECTS)
+    setSelectedId(null)
+  }
+
   const selectedProject = selectedId ? projects.find((p) => p.id === selectedId) : null
 
   return (
@@ -240,10 +249,18 @@ export default function App() {
         <CommandBar onSubmit={handleGenerate} />
       </LandingHero>
 
-      <div className="px-6 pt-6 max-w-5xl mx-auto">
+      <div className="px-6 pt-6 max-w-5xl mx-auto flex items-center justify-between">
         <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
           最近のプロジェクト
         </h2>
+        <button
+          type="button"
+          onClick={handleClearAll}
+          className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
+          title="localStorage に保存されたプロジェクトを全て消してサンプルに戻す"
+        >
+          Clear All
+        </button>
       </div>
 
       <InformationGrid

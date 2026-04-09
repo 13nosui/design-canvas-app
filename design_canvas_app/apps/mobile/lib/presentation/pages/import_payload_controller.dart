@@ -274,6 +274,22 @@ class ImportPayloadController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Move a section within its parent screen. Bounds-checked, no-op on
+  /// invalid indices or equal from/to.
+  void moveSection(int screenIndex, int from, int to) {
+    final sections = _ensureSectionsList(screenIndex);
+    if (sections == null) return;
+    if (from < 0 || from >= sections.length) return;
+    if (to < 0 || to >= sections.length) return;
+    if (from == to) return;
+    _pushHistory();
+    final item = sections.removeAt(from);
+    sections.insert(to, item);
+    _dirty = true;
+    _persistToUrl();
+    notifyListeners();
+  }
+
   void addApi() {
     _pushHistory();
     final apis = _ensureDetailList('apis');

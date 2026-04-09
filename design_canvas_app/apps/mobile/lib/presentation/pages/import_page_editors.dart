@@ -149,6 +149,7 @@ class ScreensList extends StatelessWidget {
     required this.onMoveScreen,
     required this.onAddSection,
     required this.onRemoveSection,
+    required this.onMoveSection,
   });
   final List<Map<String, dynamic>> screens;
   final EditAtPath onEdit;
@@ -158,6 +159,7 @@ class ScreensList extends StatelessWidget {
   final void Function(int from, int to) onMoveScreen;
   final ValueChanged<int> onAddSection;
   final void Function(int screenIndex, int sectionIndex) onRemoveSection;
+  final void Function(int screenIndex, int from, int to) onMoveSection;
 
   static List<Map<String, dynamic>> _asListOfMaps(dynamic value) {
     if (value is! List) return const [];
@@ -277,6 +279,8 @@ class ScreensList extends StatelessWidget {
                         child: _SectionSubCard(
                           label: (secEntry.value['label'] as String?) ?? '',
                           body: (secEntry.value['body'] as String?) ?? '',
+                          isFirst: secEntry.key == 0,
+                          isLast: secEntry.key == sections.length - 1,
                           onEditLabel: (v) => onEdit(
                             [
                               'detail',
@@ -299,6 +303,10 @@ class ScreensList extends StatelessWidget {
                             ],
                             v,
                           ),
+                          onMoveUp: () => onMoveSection(
+                              screenIndex, secEntry.key, secEntry.key - 1),
+                          onMoveDown: () => onMoveSection(
+                              screenIndex, secEntry.key, secEntry.key + 1),
                           onRemove: () =>
                               onRemoveSection(screenIndex, secEntry.key),
                         ),
@@ -390,14 +398,22 @@ class _SectionSubCard extends StatelessWidget {
   const _SectionSubCard({
     required this.label,
     required this.body,
+    required this.isFirst,
+    required this.isLast,
     required this.onEditLabel,
     required this.onEditBody,
+    required this.onMoveUp,
+    required this.onMoveDown,
     required this.onRemove,
   });
   final String label;
   final String body;
+  final bool isFirst;
+  final bool isLast;
   final ValueChanged<String> onEditLabel;
   final ValueChanged<String> onEditBody;
+  final VoidCallback onMoveUp;
+  final VoidCallback onMoveDown;
   final VoidCallback onRemove;
 
   @override
@@ -426,6 +442,34 @@ class _SectionSubCard extends StatelessWidget {
                   ),
                   label: 'セクションラベル',
                   onChanged: onEditLabel,
+                ),
+              ),
+              InkWell(
+                onTap: isFirst ? null : onMoveUp,
+                borderRadius: BorderRadius.circular(3),
+                child: Padding(
+                  padding: const EdgeInsets.all(2),
+                  child: Icon(
+                    Icons.arrow_upward,
+                    size: 11,
+                    color: isFirst
+                        ? const Color(0xFFCBD5E1)
+                        : const Color(0xFF94A3B8),
+                  ),
+                ),
+              ),
+              InkWell(
+                onTap: isLast ? null : onMoveDown,
+                borderRadius: BorderRadius.circular(3),
+                child: Padding(
+                  padding: const EdgeInsets.all(2),
+                  child: Icon(
+                    Icons.arrow_downward,
+                    size: 11,
+                    color: isLast
+                        ? const Color(0xFFCBD5E1)
+                        : const Color(0xFF94A3B8),
+                  ),
                 ),
               ),
               _DeleteIconButton(
