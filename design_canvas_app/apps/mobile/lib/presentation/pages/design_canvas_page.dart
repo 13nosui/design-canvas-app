@@ -16,6 +16,7 @@ import '../../core/utils/file_exporter_stub.dart'
     if (dart.library.io) '../../core/utils/file_exporter_io.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../widgets/canvas_inspector_panel.dart';
 import '../widgets/property_field_editor.dart';
 import '../widgets/sitemap_painter.dart';
 import '../../core/design_system/codegen/theme_codegen.dart';
@@ -1384,130 +1385,13 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
   }
 
   Widget _buildPropertyInspectorPanel(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('✨ Component Inspector',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 4),
-              Text('Target: ${_inspectedFilePath!.split('/').last}',
-                  style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withOpacity(0.6))),
-            ],
-          ),
-        ),
-        if (_isInspectorLoading)
-          const Padding(
-              padding: EdgeInsets.all(20),
-              child: Center(child: CircularProgressIndicator())),
-        if (!_isInspectorLoading)
-          ...(() {
-            final filteredFields = _inspectedFields.where((f) {
-              if (_selectedComponentId == null) return true;
-              return f['className'] == _selectedComponentId;
-            }).toList();
-
-            if (filteredFields.isEmpty) {
-              return [
-                const Padding(
-                    padding: EdgeInsets.all(20),
-                    child: Text('No styling tokens found in this component.'))
-              ];
-            }
-
-            return filteredFields.map((field) {
-              final className = field['className'];
-              final isAppToken = field['isAppToken'] == true;
-              final isCandidate = field['isCandidate'] == true;
-              final name = field['name'];
-              final valueStr = field['value'];
-              final candidateName = field['candidateName'];
-
-              return Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                    border: Border(
-                        bottom:
-                            BorderSide(color: Colors.grey.withOpacity(0.1)))),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (_selectedComponentId == null && className != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 4.0),
-                        child: Text(className,
-                            style: const TextStyle(
-                                fontSize: 10,
-                                color: Colors.indigo,
-                                fontWeight: FontWeight.bold)),
-                      ),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: PropertyFieldEditor(
-                            label: name,
-                            initialValue: valueStr,
-                            isAppToken: isAppToken,
-                            onSubmit: (newVal) =>
-                                _updateStyleField(className, name, newVal),
-                          ),
-                        ),
-                        if (isAppToken)
-                          Container(
-                            margin: const EdgeInsets.only(left: 8),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 4, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .primary
-                                  .withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Icon(Icons.link,
-                                size: 12,
-                                color: Theme.of(context).colorScheme.primary),
-                          ),
-                      ],
-                    ),
-                    if (isCandidate) ...[
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 24,
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.upgrade, size: 12),
-                          label: Text('Promote to $candidateName',
-                              style: const TextStyle(fontSize: 10)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                Theme.of(context).colorScheme.primary,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                          ),
-                          onPressed: () => _promoteToken(
-                              className, name, candidateName, valueStr),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              );
-            }).toList();
-          })(),
-      ],
+    return CanvasInspectorPanel(
+      inspectedFilePath: _inspectedFilePath,
+      inspectedFields: _inspectedFields,
+      isLoading: _isInspectorLoading,
+      selectedComponentId: _selectedComponentId,
+      onUpdateStyleField: _updateStyleField,
+      onPromoteToken: _promoteToken,
     );
   }
 
