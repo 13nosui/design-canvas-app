@@ -250,6 +250,101 @@ void main() {
     });
   });
 
+  group('meta badges', () {
+    test('addMeta appends', () {
+      final c = ImportPayloadController(_samplePayload());
+      expect((c.payload!['meta'] as List), isEmpty);
+      c.addMeta();
+      final meta = c.payload!['meta'] as List;
+      expect(meta, hasLength(1));
+      expect((meta[0] as Map)['label'], 'ラベル');
+      expect((meta[0] as Map)['color'], 'slate');
+    });
+
+    test('removeMeta drops by index', () {
+      final c = ImportPayloadController(_samplePayload());
+      c.addMeta();
+      c.addMeta();
+      c.removeMeta(0);
+      expect((c.payload!['meta'] as List), hasLength(1));
+    });
+
+    test('cycleMetaColor rotates through the 4 colors', () {
+      final c = ImportPayloadController(_samplePayload());
+      c.addMeta();
+      expect(((c.payload!['meta'] as List)[0] as Map)['color'], 'slate');
+      c.cycleMetaColor(0);
+      // metaColors is [green, blue, yellow, slate]; from slate index 3 → 0 → green
+      expect(((c.payload!['meta'] as List)[0] as Map)['color'], 'green');
+      c.cycleMetaColor(0);
+      expect(((c.payload!['meta'] as List)[0] as Map)['color'], 'blue');
+      c.cycleMetaColor(0);
+      expect(((c.payload!['meta'] as List)[0] as Map)['color'], 'yellow');
+      c.cycleMetaColor(0);
+      expect(((c.payload!['meta'] as List)[0] as Map)['color'], 'slate');
+    });
+
+    test('cycleMetaColor on invalid index is a no-op', () {
+      final c = ImportPayloadController(_samplePayload());
+      c.cycleMetaColor(99);
+      expect((c.payload!['meta'] as List), isEmpty);
+    });
+  });
+
+  group('exportAsJson / importFromJson', () {
+    test('exportAsJson returns pretty-printed JSON', () {
+      final c = ImportPayloadController(_samplePayload());
+      final jsonStr = c.exportAsJson();
+      expect(jsonStr, contains('"title": "タスク管理"'));
+      expect(jsonStr, contains('\n')); // indented, multi-line
+    });
+
+    test('exportAsJson on null payload returns empty', () {
+      final c = ImportPayloadController(null);
+      expect(c.exportAsJson(), '');
+    });
+
+    test('importFromJson replaces the payload', () {
+      final c = ImportPayloadController(_samplePayload());
+      final ok = c.importFromJson('{"title": "新しい", "detail": {}}');
+      expect(ok, isTrue);
+      expect(c.payload!['title'], '新しい');
+      expect(c.dirty, isTrue);
+    });
+
+    test('importFromJson pushes to history (undo restores)', () {
+      final c = ImportPayloadController(_samplePayload());
+      c.importFromJson('{"title": "差替"}');
+      c.undo();
+      expect(c.payload!['title'], 'タスク管理');
+    });
+
+    test('importFromJson rejects malformed input', () {
+      final c = ImportPayloadController(_samplePayload());
+      expect(c.importFromJson('not json at all'), isFalse);
+      expect(c.payload!['title'], 'タスク管理'); // unchanged
+    });
+
+    test('importFromJson rejects non-object top level', () {
+      final c = ImportPayloadController(_samplePayload());
+      expect(c.importFromJson('[1, 2, 3]'), isFalse);
+      expect(c.importFromJson('"just a string"'), isFalse);
+    });
+
+    test('exportAsJson -> importFromJson round-trip', () {
+      final c = ImportPayloadController(_samplePayload());
+      c.editAtPath(['title'], '編集後');
+      final exported = c.exportAsJson();
+
+      final c2 = ImportPayloadController(null);
+      final ok = c2.importFromJson(exported);
+      expect(ok, isTrue);
+      expect(c2.payload!['title'], '編集後');
+      expect(c2.payload!['detail']['screens'],
+          c.payload!['detail']['screens']);
+    });
+  });
+
   group('dispose', () {
     test('does not throw', () {
       final c = ImportPayloadController(_samplePayload());
