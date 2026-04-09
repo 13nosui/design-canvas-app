@@ -78,7 +78,7 @@ class _ImportPageState extends State<ImportPage> {
   @override
   Widget build(BuildContext context) {
     final payload = _controller.payload;
-    return Scaffold(
+    final scaffold = Scaffold(
       backgroundColor: ImportPageStyles.backgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -204,7 +204,49 @@ class _ImportPageState extends State<ImportPage> {
           ? null
           : ImportActionButton(payload: payload),
     );
+
+    // Wire Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z to undo/redo at the top level
+    // so the shortcut works anywhere on the page (including while typing
+    // in a dialog is NOT wanted — dialogs intercept their own focus, so
+    // these are only active when focus is on the page itself).
+    return Shortcuts(
+      shortcuts: <ShortcutActivator, Intent>{
+        const SingleActivator(LogicalKeyboardKey.keyZ, meta: true):
+            const _UndoIntent(),
+        const SingleActivator(LogicalKeyboardKey.keyZ, control: true):
+            const _UndoIntent(),
+        const SingleActivator(LogicalKeyboardKey.keyZ,
+            meta: true, shift: true): const _RedoIntent(),
+        const SingleActivator(LogicalKeyboardKey.keyZ,
+            control: true, shift: true): const _RedoIntent(),
+      },
+      child: Actions(
+        actions: <Type, Action<Intent>>{
+          _UndoIntent: CallbackAction<_UndoIntent>(
+            onInvoke: (_) {
+              if (_controller.canUndo) _controller.undo();
+              return null;
+            },
+          ),
+          _RedoIntent: CallbackAction<_RedoIntent>(
+            onInvoke: (_) {
+              if (_controller.canRedo) _controller.redo();
+              return null;
+            },
+          ),
+        },
+        child: Focus(autofocus: true, child: scaffold),
+      ),
+    );
   }
+}
+
+class _UndoIntent extends Intent {
+  const _UndoIntent();
+}
+
+class _RedoIntent extends Intent {
+  const _RedoIntent();
 }
 
 String? _readEncodedFromUrl() {
