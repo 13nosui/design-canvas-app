@@ -215,6 +215,25 @@ class ImportPayloadController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Clone the screen at [index] and insert the copy right after it.
+  /// Useful for creating a variant of an existing screen.
+  void duplicateScreen(int index) {
+    _pushHistory();
+    final screens = _ensureScreensList();
+    if (screens == null || index < 0 || index >= screens.length) return;
+    final original = screens[index];
+    if (original is! Map) return;
+    // Deep-clone via JSON to avoid shared refs with the original.
+    final clone = json.decode(json.encode(original)) as Map<String, dynamic>;
+    // Append " (copy)" suffix to the name so the user can find the clone.
+    final originalName = (clone['name'] as String?) ?? '';
+    clone['name'] = originalName.isEmpty ? '無題 (copy)' : '$originalName (copy)';
+    screens.insert(index + 1, clone);
+    _dirty = true;
+    _persistToUrl();
+    notifyListeners();
+  }
+
   void addSection(int screenIndex) {
     _pushHistory();
     final sections = _ensureSectionsList(screenIndex);

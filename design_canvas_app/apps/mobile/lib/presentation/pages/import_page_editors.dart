@@ -145,6 +145,7 @@ class ScreensList extends StatelessWidget {
     required this.onEdit,
     required this.onAddScreen,
     required this.onRemoveScreen,
+    required this.onDuplicateScreen,
     required this.onAddSection,
     required this.onRemoveSection,
   });
@@ -152,6 +153,7 @@ class ScreensList extends StatelessWidget {
   final EditAtPath onEdit;
   final VoidCallback onAddScreen;
   final ValueChanged<int> onRemoveScreen;
+  final ValueChanged<int> onDuplicateScreen;
   final ValueChanged<int> onAddSection;
   final void Function(int screenIndex, int sectionIndex) onRemoveSection;
 
@@ -192,6 +194,18 @@ class ScreensList extends StatelessWidget {
                         onChanged: (v) => onEdit(
                           ['detail', 'screens', screenIndex, 'name'],
                           v,
+                        ),
+                      ),
+                    ),
+                    Tooltip(
+                      message: 'この画面を複製',
+                      child: InkWell(
+                        onTap: () => onDuplicateScreen(screenIndex),
+                        borderRadius: BorderRadius.circular(4),
+                        child: const Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Icon(Icons.content_copy,
+                              size: 14, color: Color(0xFF94A3B8)),
                         ),
                       ),
                     ),

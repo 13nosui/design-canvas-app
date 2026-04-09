@@ -182,6 +182,7 @@ class _ImportPageState extends State<ImportPage> {
                     onEdit: _controller.editAtPath,
                     onAddScreen: _controller.addScreen,
                     onRemoveScreen: _controller.removeScreen,
+                    onDuplicateScreen: _controller.duplicateScreen,
                     onAddSection: _controller.addSection,
                     onRemoveSection: _controller.removeSection,
                     onAddApi: _controller.addApi,
@@ -327,6 +328,7 @@ class _ImportBody extends StatelessWidget {
     required this.onEdit,
     required this.onAddScreen,
     required this.onRemoveScreen,
+    required this.onDuplicateScreen,
     required this.onAddSection,
     required this.onRemoveSection,
     required this.onAddApi,
@@ -343,6 +345,7 @@ class _ImportBody extends StatelessWidget {
   final EditAtPath onEdit;
   final VoidCallback onAddScreen;
   final ValueChanged<int> onRemoveScreen;
+  final ValueChanged<int> onDuplicateScreen;
   final ValueChanged<int> onAddSection;
   final void Function(int screenIndex, int sectionIndex) onRemoveSection;
   final VoidCallback onAddApi;
@@ -417,6 +420,7 @@ class _ImportBody extends StatelessWidget {
         onEdit: onEdit,
         onAddScreen: onAddScreen,
         onRemoveScreen: onRemoveScreen,
+        onDuplicateScreen: onDuplicateScreen,
         onAddSection: onAddSection,
         onRemoveSection: onRemoveSection,
       ),

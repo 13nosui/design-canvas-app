@@ -248,6 +248,39 @@ void main() {
       c.removeScreen(99);
       expect((c.payload!['detail']['screens'] as List), hasLength(1));
     });
+
+    test('duplicateScreen inserts a deep clone right after the original', () {
+      final c = ImportPayloadController(_samplePayload());
+      c.duplicateScreen(0);
+      final screens = c.payload!['detail']['screens'] as List;
+      expect(screens, hasLength(2));
+      final original = screens[0] as Map;
+      final clone = screens[1] as Map;
+      expect(clone['name'], 'ダッシュボード (copy)');
+      expect(clone['purpose'], original['purpose']);
+      // Deep clone: mutating the clone does not affect the original.
+      (clone['sections'] as List).clear();
+      expect((original['sections'] as List), isNotEmpty);
+    });
+
+    test('duplicateScreen on invalid index is a no-op', () {
+      final c = ImportPayloadController(_samplePayload());
+      c.duplicateScreen(99);
+      expect((c.payload!['detail']['screens'] as List), hasLength(1));
+    });
+
+    test('duplicateScreen on unnamed screen uses "無題 (copy)"', () {
+      final c = ImportPayloadController({
+        'detail': {
+          'screens': [
+            {'name': '', 'purpose': 'x'},
+          ],
+        },
+      });
+      c.duplicateScreen(0);
+      final screens = c.payload!['detail']['screens'] as List;
+      expect((screens[1] as Map)['name'], '無題 (copy)');
+    });
   });
 
   group('meta badges', () {
