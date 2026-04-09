@@ -246,11 +246,34 @@ dart scripts/generate_sitemap_widgets.dart
 
 ## Next Milestones
 
-- [ ] Canvas editor が ImportPage の生成ページを in-memory で直接表示 (現在は手動ファイル書き込み + scanned_routes 再生成が必要)
+- [ ] **`CanvasEditorController` への state 抽出** — `design_canvas_page.dart` に残る
+      AST 編集メソッド (`_updateCodeText`, `_wrap`, `_unwrap`, `_duplicate`,
+      `_insert`) + inspector async メソッド (`_loadInspector`, `_updateStyleField`,
+      `_promoteToken`) を `ChangeNotifier` ベースの controller に抽出して
+      800 行ルールを達成する (ImportPayloadController と同パターン)。
+      次セッションの最初のタスク候補。
+- [ ] Canvas editor が ImportPage の生成ページを in-memory で直接表示
+      (現在は手動ファイル書き込み + `scanned_routes` 再生成が必要)
 - [ ] Flutter → React 逆方向ハンドオフ (canvas の状態を React へ返す)
-- [ ] `design_canvas_page.dart` のさらなる分割 (1944 行 → < 800)
-- [ ] Widget test の拡充 (ImportPage UI、bottom sheet 含む)
+- [ ] Widget test の拡充 (ImportPage UI、bottom sheet 含む — 現状は controller の
+      pure Dart テスト 44+ ケースのみ)
 - [ ] Flutter Web の CSP と SPA fallback の強化
+
+### 設計ファイル健全性 (800 行ルール)
+
+| ファイル | 現行 | 800 ルール |
+|---|---|---|
+| `design_canvas_page.dart` | 1112 | ❌ 漸次改善中 |
+| `import_page.dart` | 797 | ✅ |
+| `import_page_editors.dart` | 675 | ✅ |
+| `canvas_live_editor_panel.dart` | 559 | ✅ 抽出済み |
+| `import_payload_controller.dart` | 449 | ✅ |
+| `import_page_sheet.dart` | 331 | ✅ |
+| `canvas_inspector_panel.dart` | 181 | ✅ 抽出済み |
+| `canvas_device_preview.dart` | 159 | ✅ 抽出済み |
+| `canvas_commit_dialog.dart` | 128 | ✅ 抽出済み |
+
+`design_canvas_page.dart` は 2561 → 1944 → 1112 行と段階的に削減中。最終目標 < 800。
 
 ---
 
