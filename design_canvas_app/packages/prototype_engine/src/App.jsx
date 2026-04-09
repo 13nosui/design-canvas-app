@@ -1,10 +1,47 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AppShell, LandingHero, InformationGrid } from './components/prototypes'
 import { ProjectMeta } from './components/Badge'
 import { CommandBar } from './components/CommandBar'
 import { DetailDrawer } from './components/DetailDrawer'
 import { INITIAL_PROJECTS } from './data/projects'
 import { generatePrototypeStream, elaboratePrototypeStream } from './lib/generate'
+
+const STORAGE_KEY = 'design-canvas.projects.v1'
+
+/**
+ * Load persisted projects from localStorage. Falls back to the sample
+ * INITIAL_PROJECTS on first visit, on parse error, or on a missing entry.
+ * We drop any entry with `generating: true` since an in-progress stream
+ * cannot be resumed across reloads.
+ */
+function loadPersistedProjects() {
+  try {
+    const raw = typeof window !== 'undefined'
+      ? window.localStorage.getItem(STORAGE_KEY)
+      : null
+    if (!raw) return INITIAL_PROJECTS
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return INITIAL_PROJECTS
+    return parsed
+      .filter((p) => p && typeof p === 'object' && p.id && !p.generating)
+      .map((p) => ({ ...p, generating: false, detailLoading: false }))
+  } catch {
+    return INITIAL_PROJECTS
+  }
+}
+
+function savePersistedProjects(projects) {
+  try {
+    if (typeof window === 'undefined') return
+    // Avoid persisting transient states
+    const sanitized = projects
+      .filter((p) => !p.generating && !p.error)
+      .map(({ detailLoading, ...rest }) => rest)
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized))
+  } catch {
+    // storage full / private mode → ignore
+  }
+}
 
 const NAV_ITEMS = [
   { label: 'Projects', href: '#', active: true },
@@ -57,8 +94,15 @@ function toGridItems(projects) {
 }
 
 export default function App() {
-  const [projects, setProjects] = useState(INITIAL_PROJECTS)
+  const [projects, setProjects] = useState(loadPersistedProjects)
   const [selectedId, setSelectedId] = useState(null)
+
+  // Persist to localStorage whenever the project list changes.
+  // Skipping transient (generating / errored) entries so reloads land
+  // on a clean, resumable state.
+  useEffect(() => {
+    savePersistedProjects(projects)
+  }, [projects])
 
   async function handleGenerate(prompt) {
     const id = `gen-${Date.now()}`
