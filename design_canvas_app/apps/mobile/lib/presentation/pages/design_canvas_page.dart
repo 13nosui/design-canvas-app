@@ -18,6 +18,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../widgets/canvas_commit_dialog.dart';
 import '../widgets/canvas_decor.dart';
+import '../widgets/canvas_device_preview.dart';
 import '../widgets/canvas_inspector_panel.dart';
 import '../widgets/property_field_editor.dart';
 import '../widgets/sitemap_painter.dart';
@@ -669,126 +670,11 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
 
   Widget _buildDevicePreview(
       DeviceSpec device, AppRouteDef? route, Widget content) {
-    return SingleChildScrollView(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (route != null) ...[
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Flexible(
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withOpacity(0.8),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '🏷️ ${route.path} (${route.name ?? route.path})',
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.surface,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                ),
-                if (route.filePath != null) ...[
-                  const SizedBox(width: 8),
-                  Tooltip(
-                    message: 'Inspect Styles',
-                    child: IconButton(
-                      icon: const Text('🎨', style: TextStyle(fontSize: 16)),
-                      onPressed: () => _loadInspector(route.filePath!),
-                      style: IconButton.styleFrom(
-                        backgroundColor: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withOpacity(0.8),
-                        minimumSize: const Size(40, 40),
-                        padding: EdgeInsets.zero,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Tooltip(
-                    message: 'Open in IDE',
-                    child: IconButton(
-                      icon: const Text('💻', style: TextStyle(fontSize: 16)),
-                      onPressed: () async {
-                        try {
-                          await http.post(
-                            Uri.parse('http://localhost:8080/open-ide'),
-                            headers: {'Content-Type': 'application/json'},
-                            body: jsonEncode({'filePath': route.filePath}),
-                          );
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('❌ IDEを開けません: $e')),
-                            );
-                          }
-                        }
-                      },
-                      style: IconButton.styleFrom(
-                        backgroundColor: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withOpacity(0.8),
-                        minimumSize: const Size(40, 40),
-                        padding: EdgeInsets.zero,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-            const SizedBox(height: 16),
-          ],
-          Container(
-            width: device.width,
-            height: device.height,
-            decoration: BoxDecoration(
-              color: Colors.black,
-              borderRadius: BorderRadius.circular(device.borderRadius),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 30,
-                  offset: Offset(0, 15),
-                )
-              ],
-            ),
-            padding: EdgeInsets.all(device.bezelWidth),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(
-                (device.borderRadius - device.bezelWidth)
-                    .clamp(0.0, double.infinity),
-              ),
-              child: Container(
-                color: Theme.of(context).colorScheme.surface,
-                child: ScrollConfiguration(
-                  behavior: ScrollConfiguration.of(context).copyWith(
-                    dragDevices: {
-                      PointerDeviceKind.touch,
-                      PointerDeviceKind.mouse,
-                      PointerDeviceKind.trackpad,
-                    },
-                  ),
-                  child: content,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+    return CanvasDevicePreview(
+      device: device,
+      route: route,
+      content: content,
+      onLoadInspector: _loadInspector,
     );
   }
 
