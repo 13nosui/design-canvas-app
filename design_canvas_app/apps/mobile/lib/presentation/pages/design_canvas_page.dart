@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/gestures.dart';
@@ -12,18 +13,13 @@ import '../../core/design_system/device_specs.dart';
 import '../../core/design_system/theme_controller.dart';
 import '../../core/navigation/canvas_link.dart';
 import '../../app/router.dart';
-import '../../core/utils/file_exporter_stub.dart'
-    if (dart.library.io) '../../core/utils/file_exporter_io.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../widgets/canvas_commit_dialog.dart';
+import 'canvas_editor_controller.dart';
+import 'canvas_inspector_client.dart';
+import 'canvas_theme_exporter.dart';
 import '../widgets/canvas_decor.dart';
 import '../widgets/canvas_device_preview.dart';
-import '../widgets/canvas_inspector_panel.dart';
 import '../widgets/canvas_live_editor_panel.dart';
-import '../widgets/property_field_editor.dart';
 import '../widgets/sitemap_painter.dart';
-import '../../core/design_system/codegen/theme_codegen.dart';
 
 enum PreviewMode {
   free,
@@ -49,15 +45,13 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
   double _inspectorWidth = 320.0;
   bool _isDragging = false;
 
-  List<dynamic> _inspectedFields = [];
-  String? _inspectedFilePath;
-  bool _isInspectorLoading = false;
+  late final CanvasEditorController _editor;
+  StreamSubscription<CanvasEditorEvent>? _editorEventSub;
 
   String? _selectedComponentId;
   bool _selectedComponentIsText = false;
   Offset? _selectedComponentPosition;
   OverlayEntry? _inlineEditorEntry;
-  bool _isModifierPressed = false;
 
   final CanvasLinkRegistry _linkRegistry = CanvasLinkRegistry();
   final GlobalKey _canvasKey = GlobalKey();
@@ -162,6 +156,9 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
   void initState() {
     super.initState();
     _linkRegistry.addListener(_onLinksChanged);
+    _editor = CanvasEditorController(client: HttpCanvasInspectorClient());
+    _editor.addListener(_onEditorChanged);
+    _editorEventSub = _editor.events.listen(_handleEditorEvent);
     _transformationController = TransformationController();
     _animationController = AnimationController(
       vsync: this,
@@ -173,6 +170,32 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
       });
   }
 
+  void _onEditorChanged() {
+    if (!mounted) return;
+    // Inspector loading state / fields drive _isPanelOpen/the panel;
+    // repaint whenever the controller reports a change.
+    setState(() {
+      _isPanelOpen = _isPanelOpen || _editor.inspectedFilePath != null;
+    });
+  }
+
+  void _handleEditorEvent(CanvasEditorEvent event) {
+    if (!mounted) return;
+    final Color background = switch (event) {
+      CanvasEditorSuccess() => Colors.green,
+      CanvasEditorWarning() => Colors.orange,
+      CanvasEditorError() => Colors.redAccent,
+    };
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(event.message,
+            style: const TextStyle(color: Colors.white)),
+        backgroundColor: background,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
   void _onLinksChanged() {
     if (mounted) setState(() {});
   }
@@ -181,6 +204,9 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
   void dispose() {
     _linkRegistry.removeListener(_onLinksChanged);
     _linkRegistry.dispose();
+    _editorEventSub?.cancel();
+    _editor.removeListener(_onEditorChanged);
+    _editor.dispose();
     _transformationController.dispose();
     _animationController.dispose();
     if (_inlineEditorEntry != null) {
@@ -245,223 +271,14 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
                     ),
                     controller: TextEditingController(text: currentText),
                     onSubmitted: (newText) {
-                      _updateCodeText(
-                          _inspectedFilePath ??
-                              'lib/ui/page/feed/feed_page.dart',
-                          _selectedComponentId!,
-                          newText);
+                      _editor.updateCodeText(
+                          _selectedComponentId!, newText);
                       _removeInlineEditor();
                     }),
               )));
     });
     Overlay.of(context).insert(entry);
     _inlineEditorEntry = entry;
-  }
-
-  Future<void> _updateCodeText(String path, String id, String newText) async {
-    try {
-      // テキストウィジェット自体は必ずメインの .dart ファイル側に存在するため、パスを補正する
-      if (id.startsWith('__Text__') && path.endsWith('.styles.dart')) {
-        path = path.replaceFirst('.styles.dart', '.dart');
-      }
-
-      debugPrint(
-          'Sending text update to: http://localhost:8080/inspector/replace_text | path: $path, id: $id');
-
-      final response = await http.post(
-        Uri.parse('http://localhost:8080/inspector/replace_text'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'path': path,
-          'id': id,
-          'text': newText,
-        }),
-      );
-      if (response.statusCode == 200) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                  '✅ Text updated! Please press "r" in terminal for Hot Reload.',
-                  style: TextStyle(color: Colors.white)),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 3),
-            ),
-          );
-        }
-      } else {
-        final errorMsg = 'Failed to replace text: ${response.body}';
-        debugPrint(errorMsg);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('❌ Error: ${response.body}',
-                  style: const TextStyle(color: Colors.white)),
-              backgroundColor: Colors.redAccent,
-              duration: const Duration(seconds: 5),
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint('Exception replacing text: $e');
-    }
-  }
-
-  // 📦 選択したコンポーネントを指定のWidgetで包み込む
-  Future<void> _wrapSelectedComponent(String wrapperType) async {
-    if (_selectedComponentId == null) return;
-
-    String path = _inspectedFilePath?.replaceFirst('.styles.dart', '.dart') ??
-        'lib/ui/page/feed/feed_page.dart';
-    final targetId = _selectedComponentId!;
-
-    try {
-      debugPrint('Sending wrap request: $wrapperType to $path, id: $targetId');
-      final response = await http.post(
-        Uri.parse('http://localhost:8080/inspector/wrap'),
-        headers: {'Content-Type': 'application/json'},
-        body:
-            jsonEncode({'path': path, 'id': targetId, 'wrapper': wrapperType}),
-      );
-
-      if (response.statusCode == 200) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text('📦 Wrapped with $wrapperType successfully!'),
-                backgroundColor: Colors.blueAccent),
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text('❌ Error wrapping: ${response.body}'),
-                backgroundColor: Colors.redAccent),
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint('Exception wrapping widget: $e');
-    }
-  }
-
-  // 🔓 選択したコンポーネントの外側（親ウィジェット）を剥がす
-  Future<void> _unwrapSelectedComponent() async {
-    if (_selectedComponentId == null) return;
-
-    String path = _inspectedFilePath?.replaceFirst('.styles.dart', '.dart') ??
-        'lib/ui/page/feed/feed_page.dart';
-    final targetId = _selectedComponentId!;
-
-    try {
-      debugPrint('Sending unwrap request to $path, id: $targetId');
-      final response = await http.post(
-        Uri.parse('http://localhost:8080/inspector/unwrap'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'path': path, 'id': targetId}),
-      );
-
-      if (response.statusCode == 200) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('🔓 Unwrapped successfully!'),
-                backgroundColor: Colors.blueAccent),
-          );
-        }
-      } else {
-        if (mounted) {
-          final errorMsg = jsonDecode(response.body)['error'];
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text('❌ Error unwrapping: $errorMsg'),
-                backgroundColor: Colors.orange), // 剥がせない時は警告色
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint('Exception unwrapping widget: $e');
-    }
-  }
-
-  // 👯 選択したコンポーネントを複製する (Cmd + D)
-  Future<void> _duplicateSelectedComponent() async {
-    if (_selectedComponentId == null) return;
-
-    String path = _inspectedFilePath?.replaceFirst('.styles.dart', '.dart') ??
-        'lib/ui/page/feed/feed_page.dart';
-    final targetId = _selectedComponentId!;
-
-    try {
-      debugPrint('Sending duplicate request to $path, id: $targetId');
-      final response = await http.post(
-        Uri.parse('http://localhost:8080/inspector/duplicate'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'path': path, 'id': targetId}),
-      );
-
-      if (response.statusCode == 200) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('👯 Duplicated successfully!'),
-                backgroundColor: Colors.purpleAccent),
-          );
-        }
-      } else {
-        if (mounted) {
-          final errorMsg = jsonDecode(response.body)['error'];
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text('❌ Cannot duplicate: $errorMsg'),
-                backgroundColor: Colors.orange),
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint('Exception duplicating widget: $e');
-    }
-  }
-
-  // ✨ 選択したコンポーネントのすぐ下に新しい要素を追加する (Shift + N)
-  Future<void> _insertNewComponent() async {
-    if (_selectedComponentId == null) return;
-
-    String path = _inspectedFilePath?.replaceFirst('.styles.dart', '.dart') ??
-        'lib/ui/page/feed/feed_page.dart';
-    final targetId = _selectedComponentId!;
-
-    try {
-      debugPrint('Sending insert request to $path, id: $targetId');
-      final response = await http.post(
-        Uri.parse('http://localhost:8080/inspector/insert'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'path': path, 'id': targetId}),
-      );
-
-      if (response.statusCode == 200) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('✨ Inserted new element successfully!'),
-                backgroundColor: Colors.teal),
-          );
-        }
-      } else {
-        if (mounted) {
-          final errorMsg = jsonDecode(response.body)['error'];
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text('❌ Cannot insert: $errorMsg'),
-                backgroundColor: Colors.orange),
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint('Exception inserting widget: $e');
-    }
   }
 
   Map<String, AppRouteDef> _getFlatRoutes(List<AppRouteDef> routes) {
@@ -477,94 +294,10 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
   }
 
   Future<void> _loadInspector(String dartFilePath) async {
-    final stylesPath = dartFilePath.replaceFirst('.dart', '.styles.dart');
-    setState(() {
-      _isInspectorLoading = true;
-      _inspectedFilePath = stylesPath;
-      _inspectedFields = [];
-      _isPanelOpen = true;
-    });
-
-    try {
-      final res = await http.get(
-          Uri.parse('http://localhost:8080/inspector/parse?path=$stylesPath'));
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        setState(() {
-          _inspectedFields = data['fields'] ?? [];
-          _isInspectorLoading = false;
-        });
-      } else {
-        if (mounted) setState(() => _isInspectorLoading = false);
-      }
-    } catch (e) {
-      if (mounted) setState(() => _isInspectorLoading = false);
-    }
-  }
-
-  Future<void> _updateStyleField(
-      String? className, String name, String newValue) async {
-    if (_inspectedFilePath == null) return;
-    try {
-      await http.post(
-        Uri.parse('http://localhost:8080/inspector/update'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'path': _inspectedFilePath,
-          'className': className,
-          'name': name,
-          'value': newValue,
-        }),
-      );
-      // 再パースして最新状態に反映
-      await _loadInspector(
-          _inspectedFilePath!.replaceFirst('.styles.dart', '.dart'));
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-                '✨ Style saved! Please press "R" (Shift+r) in terminal for Hot Restart.',
-                style: TextStyle(color: Colors.white)),
-            backgroundColor: Colors.blueAccent,
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Update failed: $e')));
-      }
-    }
-  }
-
-  Future<void> _promoteToken(
-      String? className, String name, String? tokenName, String value) async {
-    if (_inspectedFilePath == null || tokenName == null) return;
-    try {
-      await http.post(
-        Uri.parse('http://localhost:8080/inspector/promote'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'path': _inspectedFilePath,
-          'className': className,
-          'name': name,
-          'tokenName': tokenName,
-          'value': value,
-        }),
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('✨ Elevated to AppTokens!')));
-      }
-      await _loadInspector(
-          _inspectedFilePath!.replaceFirst('.styles.dart', '.dart'));
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Promote failed: $e')));
-      }
-    }
+    // Eagerly open the panel — loadInspector can take a moment, but the
+    // user expects immediate visual feedback when clicking a widget.
+    setState(() => _isPanelOpen = true);
+    await _editor.loadInspector(dartFilePath);
   }
 
   Map<String, Offset> _calculatePositions() {
@@ -615,60 +348,6 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
     _animationController.forward(from: 0.0);
   }
 
-  void _exportAndSaveCode(
-      BuildContext context, ThemeControllerProvider themeController) {
-    final colorsCode = generateAppColorsCode(themeController.primaryColor);
-    final spacingCode = generateAppSpacingCode(themeController.spacingBase);
-    final shapesCode = generateAppShapesCode(themeController.borderRadius);
-    final elevationsCode =
-        generateAppElevationsCode(themeController.elevation);
-    final bordersCode = generateAppBordersCode(
-        themeController.borderWidth, themeController.borderColor);
-    final opacityCode = generateAppOpacityCode(themeController.opacity);
-    final blurCode = generateAppBlurCode(themeController.blur);
-    final gradientsCode = generateAppGradientsCode(themeController.useGradient,
-        themeController.gradientStartColor, themeController.gradientEndColor);
-    final typographyCode = generateAppTypographyCode(
-      themeController.fontFamily,
-      themeController.baseFontSize,
-      themeController.scaleRatio,
-      themeController.fontWeight,
-      themeController.letterSpacing,
-    );
-
-    if (kIsWeb) {
-      // Webブラウザの場合はローカルファイルへの書き込み権限がないため、クリップボードへ保存
-      final fullCode =
-          '/* lib/core/design_system/app_colors.dart */\\n\\n\$colorsCode\\n\\n/* lib/core/design_system/app_spacing.dart */\\n\\n\$spacingCode\\n\\n/* lib/core/design_system/app_shapes.dart */\\n\\n\$shapesCode\\n\\n/* lib/core/design_system/app_elevations.dart */\\n\\n\$elevationsCode\\n\\n/* lib/core/design_system/app_borders.dart */\\n\\n\$bordersCode\\n\\n/* lib/core/design_system/app_opacity.dart */\\n\\n\$opacityCode\\n\\n/* lib/core/design_system/app_blur.dart */\\n\\n\$blurCode\\n\\n/* lib/core/design_system/app_gradients.dart */\\n\\n\$gradientsCode\\n\\n/* lib/core/design_system/app_typography.dart */\\n\\n\$typographyCode';
-      Clipboard.setData(ClipboardData(text: fullCode));
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('✨ Code copied to clipboard (Web Mode)')),
-      );
-    } else {
-      // macOSなどのネイティブ環境ではプロジェクトファイルを直接上書きする
-      try {
-        saveFilesToDisk(
-            colorsCode: colorsCode,
-            spacingCode: spacingCode,
-            typographyCode: typographyCode,
-            shapesCode: shapesCode,
-            elevationsCode: elevationsCode,
-            bordersCode: bordersCode,
-            opacityCode: opacityCode,
-            blurCode: blurCode,
-            gradientsCode: gradientsCode);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('🔥 Source files updated directly! (Native Mode)')),
-        );
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving files: \$e')),
-        );
-      }
-    }
-  }
-
   Widget _buildDevicePreview(
       DeviceSpec device, AppRouteDef? route, Widget content) {
     return CanvasDevicePreview(
@@ -681,15 +360,15 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
 
   Widget _buildLiveEditorPanel(BuildContext context) {
     return CanvasLiveEditorPanel(
-      inspectorFilePath: _inspectedFilePath,
-      inspectorFields: _inspectedFields,
-      inspectorIsLoading: _isInspectorLoading,
+      inspectorFilePath: _editor.inspectedFilePath,
+      inspectorFields: _editor.inspectedFields,
+      inspectorIsLoading: _editor.isInspectorLoading,
       selectedComponentId: _selectedComponentId,
-      onUpdateStyleField: _updateStyleField,
-      onPromoteToken: _promoteToken,
+      onUpdateStyleField: _editor.updateStyleField,
+      onPromoteToken: _editor.promoteToken,
       showBackgroundDecor: _showBackgroundDecor,
       onToggleBackgroundDecor: (val) => setState(() => _showBackgroundDecor = val),
-      onExportAndSaveCode: _exportAndSaveCode,
+      onExportAndSaveCode: exportAndSaveCanvasTheme,
     );
   }
 
@@ -789,25 +468,25 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
                   if (event.logicalKey == LogicalKeyboardKey.keyP) {
                     if (_selectedComponentId != null &&
                         _inlineEditorEntry == null) {
-                      _wrapSelectedComponent('Padding');
+                      _editor.wrapComponent(_selectedComponentId, 'Padding');
                       return KeyEventResult.handled;
                     }
                   } else if (event.logicalKey == LogicalKeyboardKey.keyC) {
                     if (_selectedComponentId != null &&
                         _inlineEditorEntry == null) {
-                      _wrapSelectedComponent('Center');
+                      _editor.wrapComponent(_selectedComponentId, 'Center');
                       return KeyEventResult.handled;
                     }
                   } else if (event.logicalKey == LogicalKeyboardKey.keyU) {
                     if (_selectedComponentId != null &&
                         _inlineEditorEntry == null) {
-                      _unwrapSelectedComponent();
+                      _editor.unwrapComponent(_selectedComponentId);
                       return KeyEventResult.handled;
                     }
                   } else if (event.logicalKey == LogicalKeyboardKey.keyN) {
                     if (_selectedComponentId != null &&
                         _inlineEditorEntry == null) {
-                      _insertNewComponent();
+                      _editor.insertComponent(_selectedComponentId);
                       return KeyEventResult.handled;
                     }
                   }
@@ -819,7 +498,7 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
                   if (event.logicalKey == LogicalKeyboardKey.keyD) {
                     if (_selectedComponentId != null &&
                         _inlineEditorEntry == null) {
-                      _duplicateSelectedComponent();
+                      _editor.duplicateComponent(_selectedComponentId);
                       return KeyEventResult.handled;
                     }
                   }
