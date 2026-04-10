@@ -9,6 +9,7 @@
 
 import 'package:flutter/material.dart';
 
+import '../../sandbox/inspectable.dart';
 import '../tokens.dart';
 
 class GeneratedPagePreview extends StatelessWidget {
@@ -34,6 +35,13 @@ class GeneratedPagePreview extends StatelessWidget {
   final List<Map<String, dynamic>> apis;
   final List<String> stack;
 
+  /// Stable ID prefix derived from screen name — used to make each
+  /// widget Cmd+Click selectable on the design canvas.
+  String get _idPrefix {
+    final raw = ((screen['name'] as String?) ?? 'screen').trim();
+    return raw.isEmpty ? 'screen' : raw.replaceAll(RegExp(r'\s+'), '_');
+  }
+
   @override
   Widget build(BuildContext context) {
     final name = ((screen['name'] as String?) ?? '').trim();
@@ -41,6 +49,7 @@ class GeneratedPagePreview extends StatelessWidget {
     final displayName = name.isEmpty ? '(名称未定)' : name;
     final headerText = projectTitle.isEmpty ? displayName : projectTitle;
     final screenSections = _readScreenSections(screen);
+    final prefix = _idPrefix;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -48,25 +57,29 @@ class GeneratedPagePreview extends StatelessWidget {
         backgroundColor: const Color(0xFFFFFFFF),
         elevation: 0,
         scrolledUnderElevation: 0,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon.isNotEmpty) ...[
-              Text(icon, style: const TextStyle(fontSize: 18)),
-              const SizedBox(width: 8),
-            ],
-            Flexible(
-              child: Text(
-                headerText,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppTokens.colorTextPrimary,
+        title: Inspectable(
+          id: '__Text__${prefix}_appbar',
+          isText: true,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon.isNotEmpty) ...[
+                Text(icon, style: const TextStyle(fontSize: 18)),
+                const SizedBox(width: 8),
+              ],
+              Flexible(
+                child: Text(
+                  headerText,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppTokens.colorTextPrimary,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
       body: SingleChildScrollView(
@@ -74,21 +87,29 @@ class GeneratedPagePreview extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              displayName,
-              style: const TextStyle(
-                fontSize: AppTokens.fontHeadingL,
-                fontWeight: FontWeight.w700,
-                color: AppTokens.colorTextPrimary,
+            Inspectable(
+              id: '__Text__${prefix}_heading',
+              isText: true,
+              child: Text(
+                displayName,
+                style: const TextStyle(
+                  fontSize: AppTokens.fontHeadingL,
+                  fontWeight: FontWeight.w700,
+                  color: AppTokens.colorTextPrimary,
+                ),
               ),
             ),
             const SizedBox(height: AppTokens.spaceS),
-            Text(
-              purpose.isEmpty ? '(目的未記入)' : purpose,
-              style: const TextStyle(
-                fontSize: AppTokens.fontBodyM,
-                height: 1.6,
-                color: AppTokens.colorTextSecondary,
+            Inspectable(
+              id: '__Text__${prefix}_purpose',
+              isText: true,
+              child: Text(
+                purpose.isEmpty ? '(目的未記入)' : purpose,
+                style: const TextStyle(
+                  fontSize: AppTokens.fontBodyM,
+                  height: 1.6,
+                  color: AppTokens.colorTextSecondary,
+                ),
               ),
             ),
             if (screenSections.isNotEmpty) ...[
@@ -99,7 +120,7 @@ class GeneratedPagePreview extends StatelessWidget {
             ],
             if (meta.isNotEmpty) ...[
               const SizedBox(height: _sectionGap),
-              _MetaRow(meta: meta),
+              Inspectable(id: '${prefix}_meta', child: _MetaRow(meta: meta)),
             ],
             if (apis.isNotEmpty) ...[
               const SizedBox(height: _sectionGap),
@@ -111,7 +132,8 @@ class GeneratedPagePreview extends StatelessWidget {
               const SizedBox(height: _sectionGap),
               const _SectionLabel('使用スタック'),
               const SizedBox(height: 12),
-              _StackChips(stack: stack),
+              Inspectable(
+                  id: '${prefix}_stack', child: _StackChips(stack: stack)),
             ],
           ],
         ),
@@ -132,84 +154,108 @@ class GeneratedPagePreview extends StatelessWidget {
   }
 
   List<Widget> _buildSectionCards(List<Map<String, dynamic>> sections) {
-    return sections.map((s) {
+    final prefix = _idPrefix;
+    return sections.asMap().entries.map((entry) {
+      final i = entry.key;
+      final s = entry.value;
       final label = (s['label'] as String?) ?? '';
       final body = (s['body'] as String?) ?? '';
-      return Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x0A000000),
-              blurRadius: 8,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF0F172A),
+      return Inspectable(
+        id: '${prefix}_section_$i',
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0A000000),
+                blurRadius: 8,
+                offset: Offset(0, 2),
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              body,
-              style: const TextStyle(
-                fontSize: AppTokens.fontBodyM,
-                height: 1.6,
-                color: AppTokens.colorTextSecondary,
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Inspectable(
+                id: '__Text__${prefix}_section_${i}_label',
+                isText: true,
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 6),
+              Inspectable(
+                id: '__Text__${prefix}_section_${i}_body',
+                isText: true,
+                child: Text(
+                  body,
+                  style: const TextStyle(
+                    fontSize: AppTokens.fontBodyM,
+                    height: 1.6,
+                    color: AppTokens.colorTextSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }).toList();
   }
 
-  List<Widget> _buildApiCards(List<Map<String, dynamic>> apis) {
-    return apis.map((a) {
-      final name = (a['name'] as String?) ?? '';
+  List<Widget> _buildApiCards(List<Map<String, dynamic>> apiList) {
+    final prefix = _idPrefix;
+    return apiList.asMap().entries.map((entry) {
+      final i = entry.key;
+      final a = entry.value;
+      final apiName = (a['name'] as String?) ?? '';
       final description = (a['description'] as String?) ?? '';
-      return Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              name,
-              style: const TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1D4ED8),
+      return Inspectable(
+        id: '${prefix}_api_$i',
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Inspectable(
+                id: '__Text__${prefix}_api_${i}_name',
+                isText: true,
+                child: Text(
+                  apiName,
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1D4ED8),
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              description,
-              style: const TextStyle(
-                fontSize: AppTokens.fontBodyM,
-                height: 1.6,
-                color: AppTokens.colorTextSecondary,
+              const SizedBox(height: 4),
+              Text(
+                description,
+                style: const TextStyle(
+                  fontSize: AppTokens.fontBodyM,
+                  height: 1.6,
+                  color: AppTokens.colorTextSecondary,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
     }).toList();
