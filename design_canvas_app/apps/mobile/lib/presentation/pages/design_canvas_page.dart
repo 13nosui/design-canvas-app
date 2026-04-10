@@ -1,18 +1,17 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:flutter/gestures.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/rendering.dart';
 import '../../core/sandbox/inspectable.dart';
-
 import '../../core/design_system/app_colors.dart';
 import '../../core/design_system/device_specs.dart';
 import '../../core/design_system/theme_controller.dart';
 import '../../core/navigation/canvas_link.dart';
+import 'package:provider/provider.dart';
 import '../../app/router.dart';
+import '../providers/canvas_virtual_pages.dart';
 import 'canvas_editor_controller.dart';
 import 'canvas_inspector_client.dart';
 import 'canvas_theme_exporter.dart';
@@ -217,18 +216,6 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
     super.dispose();
   }
 
-  bool _keyHandler(KeyEvent event) {
-    if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.keyT) {
-      if (_selectedComponentId != null &&
-          _selectedComponentIsText &&
-          _inlineEditorEntry == null) {
-        _showInlineEditor();
-        return true;
-      }
-    }
-    return false;
-  }
-
   void _removeInlineEditor() {
     if (_inlineEditorEntry != null) {
       _inlineEditorEntry!.remove();
@@ -300,11 +287,17 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
     await _editor.loadInspector(dartFilePath);
   }
 
-  Map<String, Offset> _calculatePositions() {
+  /// Static routes + any virtual (in-memory) routes from ImportPage.
+  List<AppRouteDef> _allRoutes(BuildContext context) {
+    final virtual = context.read<CanvasVirtualPages>().routes;
+    return [...canvasRoutes, ...virtual];
+  }
+
+  Map<String, Offset> _calculatePositions(List<AppRouteDef> allRoutes) {
     final positions = <String, Offset>{};
     double currentX = 100.0;
 
-    final flatRoutes = _getFlatRoutes(canvasRoutes);
+    final flatRoutes = _getFlatRoutes(allRoutes);
     for (final key in flatRoutes.keys) {
       positions[key] = Offset(currentX, 200.0);
       currentX += screenWidth + xSpacing;
@@ -374,7 +367,11 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
 
   @override
   Widget build(BuildContext context) {
-    final positions = _calculatePositions();
+    // Watch the virtual-pages notifier so the canvas rebuilds when
+    // ImportPage pushes new pages via "キャンバスに送る".
+    context.watch<CanvasVirtualPages>();
+    final allRoutes = _allRoutes(context);
+    final positions = _calculatePositions(allRoutes);
     final themeController = ThemeControllerProvider.of(context);
     final primary = themeController.primaryColor;
     final complement = HSLColor.fromColor(primary)
@@ -577,7 +574,7 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
                                   final sitemapDefinition =
                                       <String, List<String>>{};
                                   final flatRoutes =
-                                      _getFlatRoutes(canvasRoutes);
+                                      _getFlatRoutes(allRoutes);
                                   for (final r in flatRoutes.values) {
                                     final targets = <String>[];
                                     targets.addAll(r.children
@@ -647,7 +644,7 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
                                             final idx = devEntry.key;
                                             final dev = devEntry.value;
                                             final flatRoutes =
-                                                _getFlatRoutes(canvasRoutes);
+                                                _getFlatRoutes(allRoutes);
                                             final route = flatRoutes[entry.key];
                                             final content =
                                                 CurrentRouteProvider(
@@ -675,7 +672,7 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
                                         )
                                       : (() {
                                           final flatRoutes =
-                                              _getFlatRoutes(canvasRoutes);
+                                              _getFlatRoutes(allRoutes);
                                           final route = flatRoutes[entry.key];
                                           final content = CurrentRouteProvider(
                                             routePath: route?.name ??

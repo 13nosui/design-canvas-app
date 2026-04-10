@@ -8,11 +8,13 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/design_system/codegen/page_codegen.dart';
 import '../../core/design_system/codegen/page_preview.dart';
 import '../../core/utils/page_file_exporter_stub.dart'
     if (dart.library.io) '../../core/utils/page_file_exporter_io.dart';
+import '../providers/canvas_virtual_pages.dart';
 import 'import_page.styles.dart';
 
 /// FAB shown on ImportPage when a payload is loaded. On tap it calls the
@@ -137,6 +139,24 @@ class _GeneratedPagesSheet extends StatelessWidget {
                       '${pages.length} ページ / ${pages.length * 2} ファイル を生成',
                       style: ImportPageStyles.itemTitleStyle,
                     ),
+                  ),
+                  TextButton.icon(
+                    icon: const Icon(Icons.dashboard_customize, size: 16),
+                    label: const Text('キャンバスに送る'),
+                    onPressed: () {
+                      final vp = context.read<CanvasVirtualPages>();
+                      final count = vp.addFromPayload(payload);
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            '$count 画面をキャンバスに送りました — '
+                            'Design Canvas で確認できます',
+                          ),
+                          duration: const Duration(seconds: 3),
+                        ),
+                      );
+                    },
                   ),
                   if (!kIsWeb)
                     TextButton.icon(

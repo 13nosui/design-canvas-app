@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'core/design_system/app_colors.dart';
 import 'core/design_system/app_spacing.dart';
 import 'core/design_system/app_typography.dart';
@@ -12,6 +13,7 @@ import 'core/design_system/app_gradients.dart';
 import 'core/design_system/theme_controller.dart';
 import 'presentation/pages/design_canvas_page.dart';
 import 'presentation/pages/import_page.dart';
+import 'presentation/providers/canvas_virtual_pages.dart';
 
 void main() {
   runApp(const MyApp());
@@ -184,12 +186,15 @@ class _MyAppState extends State<MyApp> {
       gradientStartColor: _gradientStartColor,
       gradientEndColor: _gradientEndColor,
       updateTheme: _updateTheme,
-      child: MaterialApp(
-        title: 'Design Canvas App',
-        themeMode: _themeMode,
-        theme: _buildTheme(Brightness.light, typo),
-        darkTheme: _buildTheme(Brightness.dark, typo),
-        home: const _HomeDispatcher(),
+      child: ChangeNotifierProvider(
+        create: (_) => CanvasVirtualPages(),
+        child: MaterialApp(
+          title: 'Design Canvas App',
+          themeMode: _themeMode,
+          theme: _buildTheme(Brightness.light, typo),
+          darkTheme: _buildTheme(Brightness.dark, typo),
+          home: const _HomeDispatcher(),
+        ),
       ),
     );
   }
