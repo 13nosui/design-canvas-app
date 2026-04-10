@@ -11,6 +11,7 @@ import 'core/design_system/app_opacity.dart';
 import 'core/design_system/app_blur.dart';
 import 'core/design_system/app_gradients.dart';
 import 'core/design_system/theme_controller.dart';
+import 'core/design_system/theme_persistence.dart';
 import 'presentation/pages/design_canvas_page.dart';
 import 'presentation/pages/import_page.dart';
 import 'presentation/providers/canvas_virtual_pages.dart';
@@ -36,6 +37,31 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     _fontFamily = widget.initialFontFamily ?? 'Noto Sans JP';
+    _restoreTheme();
+  }
+
+  void _restoreTheme() {
+    final saved = loadThemeState();
+    if (saved == null) return;
+    _themeMode = saved.themeMode;
+    _fontFamily = saved.fontFamily;
+    _primaryColor = saved.primaryColor;
+    _spacingBase = saved.spacingBase;
+    _baseFontSize = saved.baseFontSize;
+    _scaleRatio = saved.scaleRatio;
+    _fontWeight = saved.fontWeight;
+    _letterSpacing = saved.letterSpacing;
+    _borderRadius = saved.borderRadius;
+    _elevation = saved.elevation;
+    _borderWidth = saved.borderWidth;
+    _borderColor = saved.borderColor;
+    _opacity = saved.opacity;
+    _blur = saved.blur;
+    _useGradient = saved.useGradient;
+    _isLintMode = saved.isLintMode;
+    _currentMockState = saved.currentMockState;
+    _gradientStartColor = saved.gradientStartColor;
+    _gradientEndColor = saved.gradientEndColor;
   }
 
   double _spacingBase = 8.0;
@@ -97,6 +123,27 @@ class _MyAppState extends State<MyApp> {
       if (gradientStartColor != null) _gradientStartColor = gradientStartColor;
       if (gradientEndColor != null) _gradientEndColor = gradientEndColor;
     });
+    saveThemeState(
+      themeMode: _themeMode,
+      fontFamily: _fontFamily,
+      primaryColor: _primaryColor,
+      spacingBase: _spacingBase,
+      baseFontSize: _baseFontSize,
+      scaleRatio: _scaleRatio,
+      fontWeight: _fontWeight,
+      letterSpacing: _letterSpacing,
+      borderRadius: _borderRadius,
+      elevation: _elevation,
+      borderWidth: _borderWidth,
+      borderColor: _borderColor,
+      opacity: _opacity,
+      blur: _blur,
+      useGradient: _useGradient,
+      isLintMode: _isLintMode,
+      currentMockState: _currentMockState,
+      gradientStartColor: _gradientStartColor,
+      gradientEndColor: _gradientEndColor,
+    );
   }
 
   ThemeData _buildTheme(Brightness brightness, AppTypography typo) {
