@@ -20,6 +20,7 @@ import '../providers/widget_palette_controller.dart';
 import '../widgets/canvas_decor.dart';
 import '../widgets/canvas_device_preview.dart';
 import '../widgets/canvas_live_editor_panel.dart';
+import '../widgets/canvas_toolbar.dart';
 import '../widgets/drop_target_overlay.dart';
 import '../widgets/project_list_bar.dart';
 import '../widgets/screen_card_header.dart';
@@ -319,8 +320,7 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
     final layout = context.watch<CanvasLayoutController>();
     final allRoutes = _allRoutes(context);
     final positions = layout.calculatePositions(allRoutes);
-    final themeController = ThemeControllerProvider.of(context);
-    final primary = themeController.primaryColor;
+    final primary = ThemeControllerProvider.of(context).primaryColor;
     final complement = HSLColor.fromColor(primary)
         .withHue((HSLColor.fromColor(primary).hue + 180) % 360)
         .toColor();
@@ -332,78 +332,11 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
           // ── Project list bar ──
           const ProjectListBar(),
           // ── Toolbar ──
-          _buildToolbar(context, layout, themeController),
+          CanvasToolbar(
+              transformationController: _transformationController),
           // ── Canvas + Panel ──
           Expanded(child: _buildCanvasRow(
               context, layout, allRoutes, positions, primary, complement)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildToolbar(BuildContext context, CanvasLayoutController layout,
-      ThemeControllerProvider themeController) {
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        border: Border(
-          bottom: BorderSide(color: Colors.grey.withOpacity(0.2)),
-        ),
-      ),
-      child: Row(
-        children: [
-          // Widget palette toggle
-          IconButton(
-            icon: Icon(
-              context.watch<WidgetPaletteController>().isOpen
-                  ? Icons.view_sidebar
-                  : Icons.view_sidebar_outlined,
-              size: 18,
-            ),
-            tooltip: 'Widget Palette',
-            onPressed: context.read<WidgetPaletteController>().toggleSidebar,
-          ),
-          const Text('Design Canvas',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-          const Spacer(),
-          // Dark mode toggle
-          IconButton(
-            icon: Icon(themeController.themeMode == ThemeMode.dark
-                ? Icons.light_mode
-                : Icons.dark_mode,
-                size: 18),
-            tooltip: 'Toggle Dark Mode',
-            onPressed: () => themeController.updateTheme(
-                mode: themeController.themeMode == ThemeMode.light
-                    ? ThemeMode.dark
-                    : ThemeMode.light),
-          ),
-          // Device mode
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: SegmentedButton<PreviewMode>(
-              segments: const [
-                ButtonSegment(value: PreviewMode.free,
-                    label: Text('Free', style: TextStyle(fontSize: 11))),
-                ButtonSegment(value: PreviewMode.iphone15,
-                    label: Text('iPhone', style: TextStyle(fontSize: 11))),
-                ButtonSegment(value: PreviewMode.pixel7,
-                    label: Text('Pixel', style: TextStyle(fontSize: 11))),
-                ButtonSegment(value: PreviewMode.allDevices,
-                    label: Text('All', style: TextStyle(fontSize: 11))),
-              ],
-              selected: {layout.previewMode},
-              onSelectionChanged: (s) => layout.setPreviewMode(s.first),
-            ),
-          ),
-          // Properties panel toggle
-          IconButton(
-            icon: const Icon(Icons.palette_outlined, size: 18),
-            tooltip: 'Toggle Properties Panel',
-            onPressed: layout.togglePanel,
-          ),
         ],
       ),
     );
