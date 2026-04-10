@@ -3,7 +3,7 @@
 各自律開発セッションの成果と、次セッションで参照すべき状態を時系列で記録する。
 新しい会話を開くときは最新のエントリを読んでから作業を始めるとスムーズ。
 
-## 2026-04-10 — CanvasEditorController 抽出 (800 行ルール達成)
+## 2026-04-10 — CanvasEditorController 抽出 + Canvas in-memory route registry
 
 ### サマリ
 `design_canvas_page.dart` (1112 行) から inspector / AST mutation 系ロジックを
@@ -26,15 +26,21 @@
 
 `FakeCanvasInspectorClient` で pure Dart テスト。`flutter test` はローカル SDK が古いため Vercel CI でのみ実行可能。`dart analyze` は全ファイル warning 0。
 
+### Canvas in-memory route registry
+`CanvasVirtualPages` (ChangeNotifier) を `ChangeNotifierProvider` で全体に提供。
+ImportPage の「キャンバスに取り込む」シートに **「キャンバスに送る」** ボタンを追加。
+- `addFromPayload()` で payload → `GeneratedPagePreview` ベースの仮想 `AppRouteDef` を生成
+- 同一プロジェクト slug は上書き (idempotent)
+- `design_canvas_page.dart` は `context.watch<CanvasVirtualPages>()` でリアクティブに再描画
+- テスト: `canvas_virtual_pages_test.dart` 14+ ケース
+
 ### 次セッションの最初のタスク候補 (優先順)
 
-1. **Canvas in-memory route registry**
-   - ImportPage で生成した payload を canvas が直接表示できるように
-   - `CanvasVirtualPages` (ChangeNotifier) を canvas / ImportPage 両方から参照
-2. **Widget 層テスト拡充**
+1. **Widget 層テスト拡充**
    - `EditableField` タップ → dialog → onChanged の一連
    - `ScreensList` add / remove / reorder の widget test
-3. **Flutter SDK upgrade** — ローカルでもテスト実行できるようにする
+2. **Flutter SDK upgrade** — ローカルでもテスト実行できるようにする
+3. **Virtual routes の永続化** — キャンバスに送った仮想ページをブラウザリロードで失わないようにする
 
 ---
 
