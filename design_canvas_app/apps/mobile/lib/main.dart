@@ -14,7 +14,9 @@ import 'core/design_system/theme_controller.dart';
 import 'core/design_system/theme_persistence.dart';
 import 'presentation/pages/design_canvas_page.dart';
 import 'presentation/pages/import_page.dart';
+import 'presentation/providers/canvas_layout_controller.dart';
 import 'presentation/providers/canvas_virtual_pages.dart';
+import 'presentation/providers/project_list_controller.dart';
 
 void main() {
   runApp(const MyApp());
@@ -233,8 +235,14 @@ class _MyAppState extends State<MyApp> {
       gradientStartColor: _gradientStartColor,
       gradientEndColor: _gradientEndColor,
       updateTheme: _updateTheme,
-      child: ChangeNotifierProvider(
-        create: (_) => CanvasVirtualPages()..restoreFromStorage(),
+      child: MultiProvider(
+        providers: [
+          ChangeNotifierProvider(
+              create: (_) => CanvasVirtualPages()..restoreFromStorage()),
+          ChangeNotifierProvider(
+              create: (_) => ProjectListController()..restoreFromStorage()),
+          ChangeNotifierProvider(create: (_) => CanvasLayoutController()),
+        ],
         child: MaterialApp(
           title: 'Design Canvas App',
           themeMode: _themeMode,

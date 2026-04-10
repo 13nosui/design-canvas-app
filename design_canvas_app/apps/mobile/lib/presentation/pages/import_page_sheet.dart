@@ -15,6 +15,7 @@ import '../../core/design_system/codegen/page_preview.dart';
 import '../../core/utils/page_file_exporter_stub.dart'
     if (dart.library.io) '../../core/utils/page_file_exporter_io.dart';
 import '../providers/canvas_virtual_pages.dart';
+import '../providers/project_list_controller.dart';
 import 'import_page.styles.dart';
 
 /// FAB shown on ImportPage when a payload is loaded. On tap it calls the
@@ -146,6 +147,9 @@ class _GeneratedPagesSheet extends StatelessWidget {
                     onPressed: () {
                       final vp = context.read<CanvasVirtualPages>();
                       final count = vp.addFromPayload(payload);
+                      // Register in project list for the project bar
+                      context.read<ProjectListController>()
+                          .createFromPayload(payload);
                       Navigator.of(context).pop();
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
