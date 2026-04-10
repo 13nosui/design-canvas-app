@@ -17,6 +17,7 @@ import 'presentation/pages/import_page.dart';
 import 'presentation/providers/canvas_layout_controller.dart';
 import 'presentation/providers/canvas_virtual_pages.dart';
 import 'presentation/providers/project_list_controller.dart';
+import 'presentation/providers/widget_palette_controller.dart';
 
 void main() {
   runApp(const MyApp());
@@ -242,6 +243,7 @@ class _MyAppState extends State<MyApp> {
           ChangeNotifierProvider(
               create: (_) => ProjectListController()..restoreFromStorage()),
           ChangeNotifierProvider(create: (_) => CanvasLayoutController()),
+          ChangeNotifierProvider(create: (_) => WidgetPaletteController()),
         ],
         child: MaterialApp(
           title: 'Design Canvas App',

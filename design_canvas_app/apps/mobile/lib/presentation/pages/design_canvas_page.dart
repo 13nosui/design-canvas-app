@@ -16,11 +16,14 @@ import '../../app/router.dart';
 import '../providers/canvas_layout_controller.dart';
 import '../providers/canvas_virtual_pages.dart';
 import '../providers/project_list_controller.dart';
+import '../providers/widget_palette_controller.dart';
 import '../widgets/canvas_decor.dart';
 import '../widgets/canvas_device_preview.dart';
 import '../widgets/canvas_live_editor_panel.dart';
+import '../widgets/drop_target_overlay.dart';
 import '../widgets/project_list_bar.dart';
 import '../widgets/sitemap_painter.dart';
+import '../widgets/widget_palette_sidebar.dart';
 import 'canvas_editor_controller.dart';
 import 'canvas_inspector_client.dart';
 import 'canvas_theme_exporter.dart';
@@ -350,6 +353,17 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
       ),
       child: Row(
         children: [
+          // Widget palette toggle
+          IconButton(
+            icon: Icon(
+              context.watch<WidgetPaletteController>().isOpen
+                  ? Icons.view_sidebar
+                  : Icons.view_sidebar_outlined,
+              size: 18,
+            ),
+            tooltip: 'Widget Palette',
+            onPressed: context.read<WidgetPaletteController>().toggleSidebar,
+          ),
           const Text('Design Canvas',
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
           const Spacer(),
@@ -401,8 +415,10 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
       Map<String, Offset> positions,
       Color primary,
       Color complement) {
+    final palette = context.watch<WidgetPaletteController>();
     return Row(
       children: [
+        if (palette.isOpen) const WidgetPaletteSidebar(),
         Expanded(
           child: Focus(
             focusNode: _canvasFocusNode,
@@ -526,14 +542,31 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
     ];
   }
 
+  void _onWidgetDropped(PaletteItem item, String screenKey) {
+    // For now, show confirmation. Full AST insertion is wired in Phase 2.3+.
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('Added ${item.label} to $screenKey'),
+      backgroundColor: Colors.teal,
+      duration: const Duration(seconds: 2),
+    ));
+    // If the screen has a selected component, insert after it
+    final layout = context.read<CanvasLayoutController>();
+    if (layout.selectedComponentId != null) {
+      _editor.insertComponent(layout.selectedComponentId);
+    }
+  }
+
   Widget _buildScreenContent(BuildContext context,
       CanvasLayoutController layout, Map<String, AppRouteDef> flat,
       String key) {
     final route = flat[key];
-    final content = CurrentRouteProvider(
-      routePath: route?.name ?? route?.path ?? '',
-      child: route?.builder(context) ??
-          const Center(child: Text('Not Found')),
+    final content = DropTargetOverlay(
+      onDrop: (item) => _onWidgetDropped(item, key),
+      child: CurrentRouteProvider(
+        routePath: route?.name ?? route?.path ?? '',
+        child: route?.builder(context) ??
+            const Center(child: Text('Not Found')),
+      ),
     );
     if (layout.previewMode == PreviewMode.allDevices) {
       return Row(
