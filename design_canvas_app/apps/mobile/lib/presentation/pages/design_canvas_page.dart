@@ -20,7 +20,9 @@ import '../providers/widget_palette_controller.dart';
 import '../widgets/canvas_decor.dart';
 import '../widgets/canvas_device_preview.dart';
 import '../widgets/canvas_live_editor_panel.dart';
+import '../widgets/canvas_minimap.dart';
 import '../widgets/canvas_toolbar.dart';
+import '../widgets/shortcut_help_overlay.dart';
 import '../widgets/drop_target_overlay.dart';
 import '../widgets/project_list_bar.dart';
 import '../widgets/screen_card_header.dart';
@@ -205,6 +207,14 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
   KeyEventResult _handleKeyEvent(
       FocusNode node, KeyEvent event, CanvasLayoutController layout) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
+
+    // '?' key — show help (works regardless of selection)
+    if (event.logicalKey == LogicalKeyboardKey.slash &&
+        HardwareKeyboard.instance.isShiftPressed) {
+      ShortcutHelpOverlay.show(context);
+      return KeyEventResult.handled;
+    }
+
     final id = layout.selectedComponentId;
     if (id == null || _inlineEditorEntry != null) {
       return KeyEventResult.ignored;
@@ -350,7 +360,7 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
       Color primary,
       Color complement) {
     final palette = context.watch<WidgetPaletteController>();
-    return Row(
+    final row = Row(
       children: [
         if (palette.isOpen) const WidgetPaletteSidebar(),
         Expanded(
@@ -401,6 +411,19 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
         ),
         if (layout.isPanelOpen) _buildResizeHandle(layout),
         _buildPropertiesPanel(context, layout),
+      ],
+    );
+    // Wrap in Stack for minimap overlay
+    return Stack(
+      children: [
+        row,
+        CanvasMinimap(
+          positions: positions,
+          screenWidth: layout.screenWidth,
+          screenHeight: layout.screenHeight,
+          transformationController: _transformationController,
+          viewportSize: MediaQuery.of(context).size,
+        ),
       ],
     );
   }
