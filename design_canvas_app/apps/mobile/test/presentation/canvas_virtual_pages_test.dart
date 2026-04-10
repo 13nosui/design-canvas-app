@@ -155,4 +155,13 @@ void main() {
       expect(vp.routes.first.builder, isNotNull);
     });
   });
+
+  group('restoreFromStorage', () {
+    test('no-op on non-web (stub returns null)', () {
+      // On non-web, readLocalStorage returns null. restoreFromStorage
+      // should not crash and should leave state empty.
+      vp.restoreFromStorage();
+      expect(vp.routes, isEmpty);
+    });
+  });
 }

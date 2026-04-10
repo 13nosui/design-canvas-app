@@ -187,7 +187,7 @@ class _MyAppState extends State<MyApp> {
       gradientEndColor: _gradientEndColor,
       updateTheme: _updateTheme,
       child: ChangeNotifierProvider(
-        create: (_) => CanvasVirtualPages(),
+        create: (_) => CanvasVirtualPages()..restoreFromStorage(),
         child: MaterialApp(
           title: 'Design Canvas App',
           themeMode: _themeMode,
