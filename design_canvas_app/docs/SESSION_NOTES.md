@@ -3,7 +3,49 @@
 各自律開発セッションの成果と、次セッションで参照すべき状態を時系列で記録する。
 新しい会話を開くときは最新のエントリを読んでから作業を始めるとスムーズ。
 
-## 2026-04-10 — CanvasEditorController 抽出 + Canvas in-memory route registry
+## 2026-04-10 — Canvas 全面リビルド (Phase 1–5)
+
+### サマリ
+CanvasEditorController 抽出から始まり、PRD に基づく 5 Phase リビルドを完走。
+Figma 風の Canvas UI に刷新: プロジェクト一覧バー、Widget パレット (D&D)、
+画面ごとの状態バリエーション、3 セクションツールバー、ミニマップ、ショートカットヘルプ。
+
+### Phase 別コミット
+| Phase | コミット | 内容 |
+|-------|---------|------|
+| - | `b8fff85` | CanvasEditorController 抽出 (1112→788行) |
+| - | `41bc916` | Canvas in-memory route registry |
+| - | `39a29a8` | Virtual routes localStorage 永続化 |
+| - | `65a8636` | テーマスライダー localStorage 永続化 |
+| - | `29b48a2` | Canvas ↔ ImportPage 双方向ナビゲーション |
+| - | `26b282a` | GeneratedPagePreview に Inspectable 追加 |
+| 1 | `a2783cc` | Canvas Shell リファクタ + プロジェクト一覧バー |
+| 2 | `ffde7de` | Widget パレット + ドラッグ & ドロップ |
+| 3 | `e8f158b` | 画面ごとの状態バリエーション |
+| 4 | `52edd55` | Figma 風ツールバー |
+| 5 | `7516ce5` | ショートカットヘルプ + ミニマップ |
+
+### ファイルサイズ snapshot
+| ファイル | 行数 | 状態 |
+|---|---|---|
+| `design_canvas_page.dart` | 652 | ✅ |
+| `widget_palette_controller.dart` | 160 | ✅ |
+| `canvas_layout_controller.dart` | 186 | ✅ |
+| `project_list_controller.dart` | 150 | ✅ |
+| `canvas_toolbar.dart` | 155 | ✅ |
+| `canvas_minimap.dart` | 163 | ✅ |
+| `widget_palette_sidebar.dart` | 155 | ✅ |
+| `screen_card_header.dart` | 143 | ✅ |
+| `shortcut_help_overlay.dart` | 102 | ✅ |
+
+### 次セッションのタスク候補
+1. **デプロイ検証 + UX フィードバック収集**
+2. **AI コミット要約** (Phase 5 残件 — バックエンド API 必要)
+3. **Widget テスト拡充** — 新 controller 群のユニットテスト
+
+---
+
+## 2026-04-10 (前半) — CanvasEditorController 抽出 + Canvas in-memory route registry
 
 ### サマリ
 `design_canvas_page.dart` (1112 行) から inspector / AST mutation 系ロジックを
