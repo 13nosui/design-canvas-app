@@ -34,13 +34,26 @@ ImportPage の「キャンバスに取り込む」シートに **「キャンバ
 - `design_canvas_page.dart` は `context.watch<CanvasVirtualPages>()` でリアクティブに再描画
 - テスト: `canvas_virtual_pages_test.dart` 14+ ケース
 
+### localStorage 永続化
+- Virtual routes: `canvas_virtual_payloads` キーで payload を保存・復元
+- テーマスライダー: `canvas_theme_state` キーで全スライダー値を保存・復元
+- `local_storage_stub.dart` / `local_storage_html.dart` の conditional import パターン
+
+### 本日のコミット
+| コミット | 内容 |
+|---|---|
+| `b8fff85` | CanvasEditorController 抽出 (1112→788行) |
+| `41bc916` | Canvas in-memory route registry |
+| `39a29a8` | Virtual routes を localStorage で永続化 |
+| `65a8636` | テーマスライダー状態を localStorage で永続化 |
+
 ### 次セッションの最初のタスク候補 (優先順)
 
 1. **Widget 層テスト拡充**
    - `EditableField` タップ → dialog → onChanged の一連
    - `ScreensList` add / remove / reorder の widget test
 2. **Flutter SDK upgrade** — ローカルでもテスト実行できるようにする
-3. **Virtual routes の永続化** — キャンバスに送った仮想ページをブラウザリロードで失わないようにする
+3. **Canvas ↔ ImportPage 双方向ナビゲーション** — Canvas 上の仮想ルートをタップで ImportPage に戻り再編集
 
 ---
 
