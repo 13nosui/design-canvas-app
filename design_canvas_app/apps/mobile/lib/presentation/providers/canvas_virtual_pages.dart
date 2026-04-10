@@ -117,6 +117,21 @@ class CanvasVirtualPages extends ChangeNotifier {
     return virtualRoutes.length;
   }
 
+  /// Retrieve the original payload for a project slug, or null if the
+  /// slug is not registered. Used by Canvas double-tap → ImportPage.
+  Map<String, dynamic>? getPayload(String projectSlug) =>
+      _payloads[projectSlug];
+
+  /// Extract the project slug from a virtual route path.
+  /// Returns null if the path is not a virtual route.
+  /// Path format: `/virtual/{projectSlug}/{pageSlug}`
+  static String? projectSlugFromPath(String routePath) {
+    if (!routePath.startsWith('/virtual/')) return null;
+    final segments = routePath.split('/');
+    // ['', 'virtual', projectSlug, pageSlug]
+    return segments.length >= 3 ? segments[2] : null;
+  }
+
   /// Remove all virtual routes for a given project slug.
   void removeProject(String slug) {
     if (_projects.remove(slug) != null) {

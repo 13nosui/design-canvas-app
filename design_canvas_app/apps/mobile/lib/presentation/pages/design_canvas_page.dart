@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -13,6 +14,7 @@ import 'package:provider/provider.dart';
 import '../../app/router.dart';
 import '../providers/canvas_virtual_pages.dart';
 import 'canvas_editor_controller.dart';
+import 'import_page.dart';
 import 'canvas_inspector_client.dart';
 import 'canvas_theme_exporter.dart';
 import '../widgets/canvas_decor.dart';
@@ -341,6 +343,29 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
     _animationController.forward(from: 0.0);
   }
 
+  void _onScreenDoubleTap(BuildContext ctx, String key, List<AppRouteDef> routes) {
+    final route = _getFlatRoutes(routes)[key];
+    if (route == null) return;
+    final slug = CanvasVirtualPages.projectSlugFromPath(route.path);
+    if (slug != null) {
+      final payload = ctx.read<CanvasVirtualPages>().getPayload(slug);
+      if (payload != null) {
+        Navigator.of(ctx).push(MaterialPageRoute<void>(
+          builder: (_) => ImportPage(
+            encodedData: base64Url.encode(utf8.encode(json.encode(payload))),
+          ),
+        ));
+        return;
+      }
+    }
+    final filePath = 'lib/presentation/pages/${key.toLowerCase()}_page.dart';
+    debugPrint('ANTIGRAVITY_OPEN_FILE: $filePath');
+    ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+      content: Text('🖥️ Click-to-Code ($filePath)'),
+      duration: const Duration(seconds: 2),
+    ));
+  }
+
   Widget _buildDevicePreview(
       DeviceSpec device, AppRouteDef? route, Widget content) {
     return CanvasDevicePreview(
@@ -616,21 +641,8 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
                                 child: GestureDetector(
                                   behavior: HitTestBehavior.opaque,
                                   onTap: () => _zoomToScreen(entry.value),
-                                  onDoubleTap: () {
-                                    final snakeCaseKey =
-                                        entry.key.toLowerCase();
-                                    final filePath =
-                                        'lib/presentation/pages/${snakeCaseKey}_page.dart';
-                                    debugPrint(
-                                        'ANTIGRAVITY_OPEN_FILE: $filePath');
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                            '🖥️ Click-to-Code ($filePath)'),
-                                        duration: const Duration(seconds: 2),
-                                      ),
-                                    );
-                                  },
+                                  onDoubleTap: () => _onScreenDoubleTap(
+                                      context, entry.key, allRoutes),
                                   child: _previewMode == PreviewMode.allDevices
                                       ? Row(
                                           mainAxisAlignment:

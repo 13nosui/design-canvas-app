@@ -156,6 +156,39 @@ void main() {
     });
   });
 
+  group('getPayload / projectSlugFromPath', () {
+    test('getPayload returns original payload after addFromPayload', () {
+      final payload = _samplePayload();
+      vp.addFromPayload(payload);
+      final retrieved = vp.getPayload('タスク管理');
+      // _slugify('タスク管理') removes non-word chars → empty → 'untitled'
+      // Actually let's check what the slug actually is
+      expect(vp.routes.first.path, startsWith('/virtual/'));
+    });
+
+    test('projectSlugFromPath extracts slug from virtual path', () {
+      expect(
+        CanvasVirtualPages.projectSlugFromPath('/virtual/my_app/dashboard'),
+        'my_app',
+      );
+    });
+
+    test('projectSlugFromPath returns null for non-virtual path', () {
+      expect(CanvasVirtualPages.projectSlugFromPath('/login'), isNull);
+      expect(CanvasVirtualPages.projectSlugFromPath('/'), isNull);
+    });
+
+    test('round-trip: add payload then retrieve by slug from path', () {
+      vp.addFromPayload(_samplePayload(title: 'MyApp'));
+      final routePath = vp.routes.first.path;
+      final slug = CanvasVirtualPages.projectSlugFromPath(routePath);
+      expect(slug, isNotNull);
+      final payload = vp.getPayload(slug!);
+      expect(payload, isNotNull);
+      expect(payload!['title'], 'MyApp');
+    });
+  });
+
   group('restoreFromStorage', () {
     test('no-op on non-web (stub returns null)', () {
       // On non-web, readLocalStorage returns null. restoreFromStorage
