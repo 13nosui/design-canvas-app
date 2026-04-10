@@ -22,6 +22,7 @@ import '../widgets/canvas_device_preview.dart';
 import '../widgets/canvas_live_editor_panel.dart';
 import '../widgets/drop_target_overlay.dart';
 import '../widgets/project_list_bar.dart';
+import '../widgets/screen_card_header.dart';
 import '../widgets/sitemap_painter.dart';
 import '../widgets/widget_palette_sidebar.dart';
 import 'canvas_editor_controller.dart';
@@ -560,13 +561,37 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
       CanvasLayoutController layout, Map<String, AppRouteDef> flat,
       String key) {
     final route = flat[key];
-    final content = DropTargetOverlay(
-      onDrop: (item) => _onWidgetDropped(item, key),
-      child: CurrentRouteProvider(
-        routePath: route?.name ?? route?.path ?? '',
-        child: route?.builder(context) ??
-            const Center(child: Text('Not Found')),
+    final mockState = layout.getScreenState(key);
+    final screenWidget = MockStateOverlay(
+      state: mockState,
+      child: DropTargetOverlay(
+        onDrop: (item) => _onWidgetDropped(item, key),
+        child: CurrentRouteProvider(
+          routePath: route?.name ?? route?.path ?? '',
+          child: route?.builder(context) ??
+              const Center(child: Text('Not Found')),
+        ),
       ),
+    );
+    // Wrap with header
+    final content = Column(
+      children: [
+        ScreenCardHeader(
+          screenName: route?.name ?? key,
+          mockState: mockState,
+          onStateChanged: (s) => layout.setScreenState(key, s),
+          onCodeTap: () {
+            final filePath = route?.filePath ??
+                'lib/presentation/pages/${key.toLowerCase()}_page.dart';
+            debugPrint('ANTIGRAVITY_OPEN_FILE: $filePath');
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text('🖥️ $filePath'),
+              duration: const Duration(seconds: 2),
+            ));
+          },
+        ),
+        Expanded(child: screenWidget),
+      ],
     );
     if (layout.previewMode == PreviewMode.allDevices) {
       return Row(

@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../app/router.dart';
 import '../../core/design_system/device_specs.dart';
+import '../../core/design_system/theme_controller.dart';
 
 enum PreviewMode { free, iphone15, pixel7, allDevices }
 
@@ -105,6 +106,23 @@ class CanvasLayoutController extends ChangeNotifier {
     _selectedComponentId = null;
     _selectedComponentIsText = false;
     _selectedComponentPosition = null;
+    notifyListeners();
+  }
+
+  // ── Per-screen mock state ──────────────────────────────────────
+
+  final Map<String, MockUIState> _screenStates = {};
+
+  MockUIState getScreenState(String key) =>
+      _screenStates[key] ?? MockUIState.normal;
+
+  void setScreenState(String key, MockUIState state) {
+    if (_screenStates[key] == state) return;
+    if (state == MockUIState.normal) {
+      _screenStates.remove(key);
+    } else {
+      _screenStates[key] = state;
+    }
     notifyListeners();
   }
 
