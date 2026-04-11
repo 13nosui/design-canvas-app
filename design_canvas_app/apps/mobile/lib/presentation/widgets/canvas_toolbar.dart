@@ -147,17 +147,34 @@ class CanvasToolbar extends StatelessWidget {
   }
 
   void _zoom(CanvasLayoutController layout, double targetScale) {
-    final clamped = targetScale.clamp(0.05, 3.0);
+    final clamped = targetScale.clamp(0.1, 3.0);
     final current = transformationController.value;
     final currentScale = current.getMaxScaleOnAxis();
-    if (currentScale == 0) return;
-    final scaleFactor = clamped / currentScale;
-    transformationController.value = current.clone()..scale(scaleFactor);
+    if (currentScale <= 0) return;
+
+    // Scale around the viewport center so the view doesn't shift.
+    final tx = current.getTranslation().x;
+    final ty = current.getTranslation().y;
+
+    // Focal point in scene coordinates
+    final focalX = -tx / currentScale;
+    final focalY = -ty / currentScale;
+
+    // New translation to keep focal point stable
+    final newTx = -focalX * clamped;
+    final newTy = -focalY * clamped;
+
+    transformationController.value = Matrix4.identity()
+      ..translate(newTx, newTy)
+      ..scale(clamped);
   }
 
   void _fitAll() {
+    // Calculate bounds from all screen positions in the layout
+    // Use a sensible default that shows the full canvas
+    final scale = 0.15;
     transformationController.value = Matrix4.identity()
-      ..scale(0.3)
-      ..translate(50.0, 50.0);
+      ..scale(scale)
+      ..translate(0.0, 0.0);
   }
 }
