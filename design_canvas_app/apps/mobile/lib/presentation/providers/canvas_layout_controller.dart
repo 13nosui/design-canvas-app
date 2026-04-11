@@ -27,14 +27,6 @@ class CanvasLayoutController extends ChangeNotifier {
 
   // ── Canvas appearance ─────────────────────────────────────────
 
-  bool _showBackgroundDecor = true;
-  bool get showBackgroundDecor => _showBackgroundDecor;
-  void setShowBackgroundDecor(bool v) {
-    if (_showBackgroundDecor == v) return;
-    _showBackgroundDecor = v;
-    notifyListeners();
-  }
-
   bool _showConnectors = true;
   bool get showConnectors => _showConnectors;
   void setShowConnectors(bool v) {

@@ -17,7 +17,6 @@ import '../providers/canvas_layout_controller.dart';
 import '../providers/canvas_virtual_pages.dart';
 import '../providers/project_list_controller.dart';
 import '../providers/widget_palette_controller.dart';
-import '../widgets/canvas_decor.dart';
 import '../widgets/canvas_device_preview.dart';
 import '../widgets/canvas_live_editor_panel.dart';
 import '../widgets/canvas_minimap.dart';
@@ -331,9 +330,6 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
     final allRoutes = _allRoutes(context);
     final positions = layout.calculatePositions(allRoutes);
     final primary = ThemeControllerProvider.of(context).primaryColor;
-    final complement = HSLColor.fromColor(primary)
-        .withHue((HSLColor.fromColor(primary).hue + 180) % 360)
-        .toColor();
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -346,7 +342,7 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
               transformationController: _transformationController),
           // ── Canvas + Panel ──
           Expanded(child: _buildCanvasRow(
-              context, layout, allRoutes, positions, primary, complement)),
+              context, layout, allRoutes, positions, primary)),
         ],
       ),
     );
@@ -357,8 +353,7 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
       CanvasLayoutController layout,
       List<AppRouteDef> allRoutes,
       Map<String, Offset> positions,
-      Color primary,
-      Color complement) {
+      Color primary) {
     final palette = context.watch<WidgetPaletteController>();
     final row = Row(
       children: [
@@ -394,8 +389,6 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
                               color: Theme.of(context).scaffoldBackgroundColor,
                             ),
                           ),
-                          if (layout.showBackgroundDecor)
-                            _buildDecor(primary, complement),
                           if (layout.showConnectors)
                             _buildConnectors(allRoutes, positions, layout),
                           ..._buildScreenCards(
@@ -425,23 +418,6 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
           viewportSize: MediaQuery.of(context).size,
         ),
       ],
-    );
-  }
-
-  Widget _buildDecor(Color primary, Color complement) {
-    return Positioned.fill(
-      child: Stack(children: [
-        Positioned(left: -200, top: 100,
-            child: buildCanvasDecorCircle(primary.withOpacity(0.4), 1200)),
-        Positioned(left: 1000, top: -400,
-            child: buildCanvasDecorCircle(complement.withOpacity(0.3), 1400)),
-        Positioned(left: 2800, top: 500,
-            child: buildCanvasDecorCircle(Colors.pinkAccent.withOpacity(0.3), 1000)),
-        Positioned(left: 4200, top: -100,
-            child: buildCanvasDecorCircle(Colors.cyanAccent.withOpacity(0.3), 1500)),
-        Positioned(left: 6000, top: 600,
-            child: buildCanvasDecorCircle(primary.withOpacity(0.35), 1100)),
-      ]),
     );
   }
 
@@ -639,8 +615,6 @@ class _DesignCanvasPageState extends State<DesignCanvasPage>
                 selectedComponentId: layout.selectedComponentId,
                 onUpdateStyleField: _editor.updateStyleField,
                 onPromoteToken: _editor.promoteToken,
-                showBackgroundDecor: layout.showBackgroundDecor,
-                onToggleBackgroundDecor: layout.setShowBackgroundDecor,
                 onExportAndSaveCode: exportAndSaveCanvasTheme,
               ),
             ),

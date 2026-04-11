@@ -27,8 +27,6 @@ class CanvasLiveEditorPanel extends StatelessWidget {
     required this.selectedComponentId,
     required this.onUpdateStyleField,
     required this.onPromoteToken,
-    required this.showBackgroundDecor,
-    required this.onToggleBackgroundDecor,
     required this.onExportAndSaveCode,
   });
 
@@ -43,10 +41,6 @@ class CanvasLiveEditorPanel extends StatelessWidget {
   final Future<void> Function(
           String? className, String name, String? tokenName, String value)
       onPromoteToken;
-
-  // Decor toggle (owned by canvas state).
-  final bool showBackgroundDecor;
-  final ValueChanged<bool> onToggleBackgroundDecor;
 
   // Export (owned by canvas state, needs context + themeController).
   final void Function(BuildContext context, ThemeControllerProvider tc)
@@ -119,22 +113,6 @@ class CanvasLiveEditorPanel extends StatelessWidget {
                       onChanged: (val) {
                         themeController.updateTheme(isLintMode: val);
                       },
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Show Background Decor',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w600, fontSize: 14)),
-                    Switch(
-                      value: showBackgroundDecor,
-                      onChanged: onToggleBackgroundDecor,
                     ),
                   ],
                 ),
