@@ -25,11 +25,6 @@ class CanvasToolbar extends StatelessWidget {
     final palette = context.watch<WidgetPaletteController>();
     final themeController = ThemeControllerProvider.of(context);
 
-    // Extract current zoom from transformation matrix
-    final matrix = transformationController.value;
-    final currentZoom = matrix.getMaxScaleOnAxis();
-    final zoomPercent = (currentZoom * 100).round();
-
     return Container(
       height: CanvasToolbarStyles.height,
       padding: CanvasToolbarStyles.padding,
@@ -57,22 +52,40 @@ class CanvasToolbar extends StatelessWidget {
           const Spacer(),
 
           // ── Center section ──
-          // Zoom controls
-          IconButton(
-            icon: const Icon(Icons.remove, size: 16),
-            tooltip: 'Zoom Out',
-            onPressed: () => _zoom(layout, currentZoom * 0.8),
-          ),
-          Text('$zoomPercent%', style: CanvasToolbarStyles.zoomStyle),
-          IconButton(
-            icon: const Icon(Icons.add, size: 16),
-            tooltip: 'Zoom In',
-            onPressed: () => _zoom(layout, currentZoom * 1.25),
-          ),
-          IconButton(
-            icon: const Icon(Icons.fit_screen, size: 16),
-            tooltip: 'Fit All',
-            onPressed: () => _fitAll(),
+          // Zoom controls — listen to TransformationController for
+          // real-time zoom % updates
+          ValueListenableBuilder<Matrix4>(
+            valueListenable: transformationController,
+            builder: (context, matrix, _) {
+              final zoom = matrix.getMaxScaleOnAxis();
+              final pct = (zoom * 100).round();
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.remove, size: 16),
+                    tooltip: 'Zoom Out',
+                    onPressed: () => _zoom(layout, zoom * 0.8),
+                  ),
+                  SizedBox(
+                    width: 42,
+                    child: Text('$pct%',
+                        style: CanvasToolbarStyles.zoomStyle,
+                        textAlign: TextAlign.center),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.add, size: 16),
+                    tooltip: 'Zoom In',
+                    onPressed: () => _zoom(layout, zoom * 1.25),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.fit_screen, size: 16),
+                    tooltip: 'Fit All',
+                    onPressed: () => _fitAll(),
+                  ),
+                ],
+              );
+            },
           ),
           const SizedBox(width: 8),
           // Device mode

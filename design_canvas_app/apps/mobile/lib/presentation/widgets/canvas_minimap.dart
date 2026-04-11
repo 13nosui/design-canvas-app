@@ -74,9 +74,9 @@ class CanvasMinimap extends StatelessWidget {
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(7),
-            child: AnimatedBuilder(
-              animation: transformationController,
-              builder: (context, _) {
+            child: ValueListenableBuilder<Matrix4>(
+              valueListenable: transformationController,
+              builder: (context, matrix, _) {
                 return CustomPaint(
                   painter: _MinimapPainter(
                     positions: positions,
